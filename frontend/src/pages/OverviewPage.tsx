@@ -20,10 +20,10 @@ import {
 } from 'recharts'
 
 const metrics = [
-  { label: 'Canonical hotels', value: '12,480', change: '+8.2%', direction: 'up', note: 'vs. previous period', icon: Building2 },
-  { label: 'Supplier listings', value: '38,642', change: '+12.6%', direction: 'up', note: 'vs. previous period', icon: Upload },
-  { label: 'Matched listings', value: '31,208', change: '+6.4%', direction: 'up', note: 'vs. previous period', icon: CheckCircle2 },
-  { label: 'Pending reviews', value: '284', change: '-3.1%', direction: 'down', note: 'vs. previous period', icon: Clock3 },
+  { label: 'Canonical hotels', value: '12,480', change: '+8.2%', direction: 'up', impact: 'positive', note: 'vs. previous period', icon: Building2 },
+  { label: 'Supplier listings', value: '38,642', change: '+12.6%', direction: 'up', impact: 'positive', note: 'vs. previous period', icon: Upload },
+  { label: 'Matched listings', value: '31,208', change: '+6.4%', direction: 'up', impact: 'positive', note: 'vs. previous period', icon: CheckCircle2 },
+  { label: 'Pending reviews', value: '284', change: '-3.1%', direction: 'down', impact: 'positive', note: 'vs. previous period', icon: Clock3 },
 ]
 
 const chartData = [
@@ -49,7 +49,7 @@ export default function OverviewPage() {
       <div className="page-heading">
         <div>
           <div className="eyebrow">INTELLIGENCE OVERVIEW</div>
-          <h1>Good morning, Admin</h1>
+          <h1>Your inventory at a glance</h1>
           <p className="page-description">Here's what's happening across your hotel inventory.</p>
         </div>
         <div className="heading-actions">
@@ -60,7 +60,7 @@ export default function OverviewPage() {
       </div>
 
       <section className="metrics-grid" aria-label="Inventory summary">
-        {metrics.map(({ label, value, change, direction, note, icon: Icon }) => (
+        {metrics.map(({ label, value, change, direction, impact, note, icon: Icon }) => (
           <article className="metric-card" key={label}>
             <div className="metric-top">
               <span className="metric-label">{label}</span>
@@ -68,7 +68,7 @@ export default function OverviewPage() {
             </div>
             <div className="metric-value">{value}</div>
             <div className="metric-foot">
-              <span className={`metric-change ${direction === 'up' ? 'positive' : 'negative'}`}>
+              <span className={`metric-change ${impact === 'positive' ? 'positive' : 'negative'}`}>
                 {direction === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                 {change}
               </span>
