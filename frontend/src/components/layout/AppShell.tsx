@@ -162,7 +162,6 @@ export default function AppShell() {
             <div className="profile-button" aria-label="Workspace Admin profile">
               <span className="profile-avatar">RK</span>
               <span className="profile-copy"><strong>Workspace Admin</strong><small>Administrator</small></span>
-              <ChevronDown size={15} />
             </div>
           </div>
         </header>
