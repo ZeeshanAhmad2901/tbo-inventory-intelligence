@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -29,6 +29,28 @@ const navigation = [
 
 export default function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+
+  function closeMobileNavigation() {
+    if (!mobileOpen) return
+
+    setMobileOpen(false)
+    menuButtonRef.current?.focus()
+  }
+
+  useEffect(() => {
+    if (!mobileOpen) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setMobileOpen(false)
+        menuButtonRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [mobileOpen])
   const location = useLocation()
   const currentPage =
     navigation.find(({ path }) => path === location.pathname)?.label ??
@@ -40,7 +62,7 @@ export default function AppShell() {
         <button
           className="sidebar-backdrop"
           aria-label="Close navigation"
-          onClick={() => setMobileOpen(false)}
+          onClick={closeMobileNavigation}
         />
       )}
 
@@ -53,7 +75,7 @@ export default function AppShell() {
           </div>
           <button
             className="mobile-close icon-button"
-            onClick={() => setMobileOpen(false)}
+            onClick={closeMobileNavigation}
             aria-label="Close menu"
           >
             <X size={19} />
@@ -61,18 +83,17 @@ export default function AppShell() {
         </div>
 
         <div className="workspace-label">WORKSPACE</div>
-        <nav className="sidebar-nav" aria-label="Main navigation">
+        <nav id="primary-navigation" className="sidebar-nav" aria-label="Main navigation">
           {navigation.map(({ label, path, icon: Icon }) => (
             <NavLink
               key={path}
               to={path}
               end={path === '/'}
               className={({ isActive }) => `nav-link ${isActive ? 'nav-link-active' : ''}`}
-              onClick={() => setMobileOpen(false)}
+              onClick={closeMobileNavigation}
             >
               <Icon size={18} strokeWidth={1.8} />
               <span>{label}</span>
-              {label === 'Review Queue' && <span className="nav-count">12</span>}
             </NavLink>
           ))}
         </nav>
@@ -81,7 +102,7 @@ export default function AppShell() {
           <NavLink
             to="/settings"
             className={({ isActive }) => `nav-link ${isActive ? 'nav-link-active' : ''}`}
-            onClick={() => setMobileOpen(false)}
+            onClick={closeMobileNavigation}
           >
             <Settings size={18} strokeWidth={1.8} />
             <span>Settings</span>
@@ -104,8 +125,11 @@ export default function AppShell() {
           <div className="topbar-left">
             <button
               className="mobile-menu icon-button"
+              ref={menuButtonRef}
               onClick={() => setMobileOpen(true)}
               aria-label="Open navigation"
+              aria-expanded={mobileOpen}
+              aria-controls="primary-navigation"
             >
               <Menu size={21} />
             </button>
