@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react'
+﻿import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AppShell from './components/layout/AppShell'
 
 const OverviewPage = lazy(() => import('./pages/OverviewPage'))
 const SuppliersPage = lazy(() => import('./pages/SuppliersPage'))
+const InventoryPage = lazy(() => import('./pages/InventoryPage'))
 
 function PageLoading() {
   return (
@@ -48,7 +49,14 @@ export default function App() {
             </Suspense>
           }
         />
-        <Route path="inventory" element={<SectionPlaceholder />} />
+        <Route
+          path="inventory"
+          element={
+            <Suspense fallback={<PageLoading />}>
+              <InventoryPage />
+            </Suspense>
+          }
+        />
         <Route path="matching" element={<SectionPlaceholder />} />
         <Route path="review" element={<SectionPlaceholder />} />
         <Route path="offers" element={<SectionPlaceholder />} />
