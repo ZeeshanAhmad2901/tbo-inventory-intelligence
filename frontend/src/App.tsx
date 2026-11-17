@@ -6,6 +6,7 @@ const OverviewPage = lazy(() => import('./pages/OverviewPage'))
 const SuppliersPage = lazy(() => import('./pages/SuppliersPage'))
 const InventoryPage = lazy(() => import('./pages/InventoryPage'))
 const MatchingPage = lazy(() => import('./pages/MatchingPage'))
+const ReviewPage = lazy(() => import('./pages/ReviewPage'))
 
 function PageLoading() {
   return (
@@ -66,7 +67,14 @@ export default function App() {
             </Suspense>
           }
         />
-        <Route path="review" element={<SectionPlaceholder />} />
+        <Route
+          path="review"
+          element={
+            <Suspense fallback={<PageLoading />}>
+              <ReviewPage />
+            </Suspense>
+          }
+        />
         <Route path="offers" element={<SectionPlaceholder />} />
         <Route path="analytics" element={<SectionPlaceholder />} />
         <Route path="settings" element={<SectionPlaceholder />} />
