@@ -475,24 +475,40 @@ export default function InventoryPage() {
             <caption className="inventory-sr-only">Canonical hotels and their supplier listing counts</caption>
             <thead>
               <tr>
-                <th scope="col">
-                  <button className="inventory-sort" onClick={() => handleSort('name')}>
+                <th scope="col" aria-sort={sortKey === 'name' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button
+                    className="inventory-sort"
+                    onClick={() => handleSort('name')}
+                    aria-label={`Sort by hotel profile, currently ${sortKey === 'name' ? sortDirection === 'asc' ? 'ascending' : 'descending' : 'not sorted'}`}
+                  >
                     HOTEL PROFILE {renderSortIcon('name')}
                   </button>
                 </th>
-                <th scope="col">
-                  <button className="inventory-sort" onClick={() => handleSort('city')}>
+                <th scope="col" aria-sort={sortKey === 'city' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button
+                    className="inventory-sort"
+                    onClick={() => handleSort('city')}
+                    aria-label={`Sort by location, currently ${sortKey === 'city' ? sortDirection === 'asc' ? 'ascending' : 'descending' : 'not sorted'}`}
+                  >
                     LOCATION {renderSortIcon('city')}
                   </button>
                 </th>
                 <th scope="col">CATEGORY</th>
-                <th scope="col">
-                  <button className="inventory-sort" onClick={() => handleSort('listings')}>
+                <th scope="col" aria-sort={sortKey === 'listings' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button
+                    className="inventory-sort"
+                    onClick={() => handleSort('listings')}
+                    aria-label={`Sort by listings, currently ${sortKey === 'listings' ? sortDirection === 'asc' ? 'ascending' : 'descending' : 'not sorted'}`}
+                  >
                     LISTINGS {renderSortIcon('listings')}
                   </button>
                 </th>
-                <th scope="col">
-                  <button className="inventory-sort" onClick={() => handleSort('status')}>
+                <th scope="col" aria-sort={sortKey === 'status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button
+                    className="inventory-sort"
+                    onClick={() => handleSort('status')}
+                    aria-label={`Sort by match status, currently ${sortKey === 'status' ? sortDirection === 'asc' ? 'ascending' : 'descending' : 'not sorted'}`}
+                  >
                     MATCH STATUS {renderSortIcon('status')}
                   </button>
                 </th>
@@ -550,7 +566,7 @@ export default function InventoryPage() {
         </div>
 
         <div className="inventory-table-footer">
-          <span>
+          <span role="status" aria-live="polite" aria-atomic="true">
             Showing {filteredHotels.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}
             {'–'}{Math.min(currentPage * pageSize, filteredHotels.length)}
             {' '}of {filteredHotels.length} hotels
@@ -585,12 +601,16 @@ export default function InventoryPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="inventory-detail-title"
+            aria-describedby="inventory-detail-description"
           >
             <div className="inventory-detail-header">
               <div>
                 <div className="eyebrow">CANONICAL HOTEL PROFILE</div>
                 <h2 id="inventory-detail-title">{selectedHotel.name}</h2>
                 <span className="inventory-detail-id">{selectedHotel.id}</span>
+                <p id="inventory-detail-description" className="inventory-sr-only">
+                  Canonical hotel profile, location, category, match status, and associated supplier listings.
+                </p>
               </div>
               <button
                 className="icon-button"
