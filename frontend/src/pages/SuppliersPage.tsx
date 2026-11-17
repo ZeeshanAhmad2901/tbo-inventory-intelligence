@@ -287,6 +287,7 @@ export default function SuppliersPage() {
                   <td>
                     <button
                       className="button button-secondary supplier-view-button"
+                      aria-label={`View details for ${supplier.name}`}
                       onClick={(event) => {
                         previousFocusRef.current = event.currentTarget
                         setSelectedSupplier(supplier)
@@ -308,7 +309,12 @@ export default function SuppliersPage() {
           </table>
         </div>
 
-        <div className="supplier-table-footer">
+        <div
+          className="supplier-table-footer"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           Showing {filteredSuppliers.length} of {suppliers.length} suppliers
         </div>
       </section>
@@ -321,6 +327,7 @@ export default function SuppliersPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="supplier-detail-title"
+            aria-describedby="supplier-detail-description"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="supplier-detail-header">
@@ -347,7 +354,7 @@ export default function SuppliersPage() {
               </div>
             </div>
 
-            <p className="supplier-detail-description">
+            <p id="supplier-detail-description" className="supplier-detail-description">
               {selectedSupplier.description}
             </p>
 
