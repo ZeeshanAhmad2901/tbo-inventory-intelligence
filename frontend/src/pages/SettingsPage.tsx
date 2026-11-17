@@ -150,6 +150,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsState>(initialSettings)
   const [savedSettings, setSavedSettings] = useState<SettingsState>(initialSettings)
   const [notice, setNotice] = useState('')
+  const [noticeType, setNoticeType] = useState<'success' | 'error' | null>(null)
 
   const hasChanges =
     JSON.stringify(settings) !== JSON.stringify(savedSettings)
@@ -169,17 +170,48 @@ export default function SettingsPage() {
   ) => {
     setSettings((current) => ({ ...current, [key]: value }))
     setNotice('')
+    setNoticeType(null)
   }
 
   const saveSettings = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setSavedSettings({ ...settings })
+
+    const nextSettings = {
+      ...settings,
+      workspaceName: settings.workspaceName.trim(),
+      displayName: settings.displayName.trim(),
+      email: settings.email.trim(),
+    }
+    const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextSettings.email)
+
+    if (!nextSettings.workspaceName) {
+      setActiveTab('general')
+      setNotice('Enter a workspace name before applying changes.')
+      setNoticeType('error')
+      return
+    }
+
+    if (!nextSettings.displayName || !emailIsValid) {
+      setActiveTab('profile')
+      setNotice(
+        !nextSettings.displayName
+          ? 'Enter a display name before applying changes.'
+          : 'Enter a valid email address before applying changes.',
+      )
+      setNoticeType('error')
+      return
+    }
+
+    setSettings(nextSettings)
+    setSavedSettings(nextSettings)
     setNotice('Preferences applied for this demonstration session.')
+    setNoticeType('success')
   }
 
   const resetSettings = () => {
     setSettings({ ...savedSettings })
     setNotice('Unsaved changes have been discarded.')
+    setNoticeType('success')
   }
 
   const activeTabDetails = tabs.find((tab) => tab.id === activeTab)!
@@ -224,6 +256,7 @@ export default function SettingsPage() {
                 onClick={() => {
                   setActiveTab(id)
                   setNotice('')
+                  setNoticeType(null)
                 }}
                 aria-current={activeTab === id ? 'page' : undefined}
               >
@@ -246,7 +279,7 @@ export default function SettingsPage() {
           </div>
         </aside>
 
-        <form className="settings-content panel" onSubmit={saveSettings}>
+        <form className="settings-content panel" onSubmit={saveSettings} noValidate>
           <div className="settings-content-header">
             <div>
               <div className="settings-content-eyebrow">SETTINGS</div>
@@ -537,8 +570,17 @@ export default function SettingsPage() {
           )}
 
           <div className="settings-form-footer">
-            <div className="settings-save-message" role="status" aria-live="polite">
-              {notice && <><Check size={15} /> {notice}</>}
+            <div
+              className={`settings-save-message ${noticeType === 'error' ? 'settings-save-message-error' : ''}`}
+              role="status"
+              aria-live="polite"
+            >
+              {notice && (
+                <>
+                  {noticeType === 'error' ? <AlertCircle size={15} /> : <Check size={15} />}
+                  {notice}
+                </>
+              )}
             </div>
             {activeTab !== 'security' && (
               <div className="settings-form-actions">

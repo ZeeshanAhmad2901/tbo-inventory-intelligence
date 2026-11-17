@@ -4015,6 +4015,10 @@
   line-height: 1.5;
 }
 
+.settings-save-message-error {
+  color: #a14f49;
+}
+
 .settings-form-actions {
   display: flex;
   align-items: center;
