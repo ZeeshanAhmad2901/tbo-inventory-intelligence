@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { readBrowserArray, writeBrowserValue } from '../lib/browser-storage'
 import {
   AlertCircle,
   ArrowLeftRight,
@@ -54,6 +55,57 @@ type ReviewCase = {
     date: string
     reviewer: string
   }[]
+}
+
+const REVIEW_STORAGE_KEY = 'tbo.review.cases.v1'
+
+function isReviewCase(value: unknown): value is ReviewCase {
+  if (!value || typeof value !== 'object') return false
+
+  const item = value as ReviewCase
+  const statuses: ReviewStatus[] = [
+    'Pending',
+    'Approved',
+    'Rejected',
+    'Correction requested',
+    'Deferred',
+  ]
+
+  const isHotelRecord = (record: HotelRecord) =>
+    record &&
+    typeof record.supplier === 'string' &&
+    typeof record.listingId === 'string' &&
+    typeof record.name === 'string' &&
+    typeof record.address === 'string' &&
+    typeof record.city === 'string' &&
+    typeof record.country === 'string' &&
+    typeof record.category === 'string'
+
+  return (
+    typeof item.id === 'string' &&
+    ['High', 'Medium', 'Low'].includes(item.priority) &&
+    typeof item.confidence === 'number' &&
+    Number.isFinite(item.confidence) &&
+    typeof item.submitted === 'string' &&
+    typeof item.reason === 'string' &&
+    isHotelRecord(item.left) &&
+    isHotelRecord(item.right) &&
+    statuses.includes(item.status) &&
+    Array.isArray(item.evidence) &&
+    item.evidence.every((entry) =>
+      entry &&
+      typeof entry.label === 'string' &&
+      typeof entry.detail === 'string' &&
+      ['Strong', 'Moderate', 'Weak'].includes(entry.strength)
+    ) &&
+    Array.isArray(item.history) &&
+    item.history.every((entry) =>
+      entry &&
+      typeof entry.action === 'string' &&
+      typeof entry.date === 'string' &&
+      typeof entry.reviewer === 'string'
+    )
+  )
 }
 
 const initialCases: ReviewCase[] = [
@@ -304,7 +356,13 @@ function RecordCard({
 }
 
 export default function ReviewPage() {
-  const [cases, setCases] = useState<ReviewCase[]>(initialCases)
+  const [cases, setCases] = useState<ReviewCase[]>(() =>
+    readBrowserArray(REVIEW_STORAGE_KEY, initialCases, isReviewCase),
+  )
+
+  useEffect(() => {
+    writeBrowserValue(REVIEW_STORAGE_KEY, cases)
+  }, [cases])
   const [selectedId, setSelectedId] = useState(initialCases[0].id)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<(typeof statusFilters)[number]>('All cases')
@@ -657,7 +715,7 @@ export default function ReviewPage() {
       </div>
 
       <p className="demo-disclaimer">
-        Demonstration workspace. Review decisions and history are stored locally in this session and are not sent to a backend service.
+        Demonstration workspace. Review decisions and history are saved in this browser on this device and are not sent to a backend service.
       </p>
     </div>
   )

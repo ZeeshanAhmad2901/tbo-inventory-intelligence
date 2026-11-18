@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { readBrowserArray, writeBrowserValue } from '../lib/browser-storage'
 import {
   ArrowLeftRight,
   Check,
@@ -39,6 +40,43 @@ type Candidate = {
   confidence: number
   status: MatchStatus
   evidence: Evidence[]
+}
+
+const MATCHING_STORAGE_KEY = 'tbo.matching.candidates.v1'
+
+function isCandidate(value: unknown): value is Candidate {
+  if (!value || typeof value !== 'object') return false
+
+  const item = value as Candidate
+  const statuses: MatchStatus[] = ['Needs review', 'Matched', 'Unmatched']
+
+  return (
+    typeof item.id === 'string' &&
+    typeof item.leftSupplier === 'string' &&
+    typeof item.leftId === 'string' &&
+    typeof item.leftName === 'string' &&
+    typeof item.leftAddress === 'string' &&
+    typeof item.leftCity === 'string' &&
+    typeof item.leftCountry === 'string' &&
+    typeof item.leftCategory === 'string' &&
+    typeof item.rightSupplier === 'string' &&
+    typeof item.rightId === 'string' &&
+    typeof item.rightName === 'string' &&
+    typeof item.rightAddress === 'string' &&
+    typeof item.rightCity === 'string' &&
+    typeof item.rightCountry === 'string' &&
+    typeof item.rightCategory === 'string' &&
+    typeof item.confidence === 'number' &&
+    Number.isFinite(item.confidence) &&
+    statuses.includes(item.status) &&
+    Array.isArray(item.evidence) &&
+    item.evidence.every((entry) =>
+      entry &&
+      typeof entry.label === 'string' &&
+      typeof entry.detail === 'string' &&
+      ['Strong', 'Moderate', 'Weak'].includes(entry.strength)
+    )
+  )
 }
 
 const initialCandidates: Candidate[] = [
@@ -247,7 +285,13 @@ function CandidateRecord({
 }
 
 export default function MatchingPage() {
-  const [candidates, setCandidates] = useState(initialCandidates)
+  const [candidates, setCandidates] = useState(() =>
+    readBrowserArray(MATCHING_STORAGE_KEY, initialCandidates, isCandidate),
+  )
+
+  useEffect(() => {
+    writeBrowserValue(MATCHING_STORAGE_KEY, candidates)
+  }, [candidates])
   const [selectedId, setSelectedId] = useState(initialCandidates[0].id)
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>('All candidates')
   const [search, setSearch] = useState('')
@@ -592,7 +636,7 @@ export default function MatchingPage() {
 
       <p className="demo-disclaimer">
         Demonstration only: candidate records, confidence scores, and evidence are illustrative examples.
-        Decisions update local page state only and are not saved to a backend or connected to live supplier data.
+        Decisions are saved in this browser on this device. They are not sent to a backend or connected to live supplier data.
       </p>
     </div>
   )
