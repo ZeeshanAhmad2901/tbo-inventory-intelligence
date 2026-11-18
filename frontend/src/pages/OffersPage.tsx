@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { demoOffersDataSource, demoOffersInitialData } from '../features/offers/data-source'
 import type { Offer } from '../features/offers/types'
+import { readBrowserValue, writeBrowserValue } from '../lib/browser-storage'
 import {
   ArrowDown,
   ArrowUpDown,
@@ -19,6 +20,32 @@ import {
   Sparkles,
   X,
 } from 'lucide-react'
+
+const OFFERS_STORAGE_KEY = 'tbo.offers.comparison.v1'
+
+interface SavedOfferComparison {
+  property: string
+  selectedIds: string[]
+}
+
+function isSavedOfferComparison(value: unknown): value is SavedOfferComparison {
+  if (!value || typeof value !== 'object') return false
+
+  const comparison = value as SavedOfferComparison
+  return (
+    demoOffersInitialData.properties.includes(comparison.property) &&
+    Array.isArray(comparison.selectedIds) &&
+    comparison.selectedIds.length <= 3 &&
+    comparison.selectedIds.every(
+      (id, index, ids) =>
+        typeof id === 'string' &&
+        ids.indexOf(id) === index &&
+        demoOffersInitialData.offers.some(
+          (offer) => offer.id === id && offer.property === comparison.property,
+        ),
+    )
+  )
+}
 
 const initialProperty = demoOffersInitialData.properties[0]
 const initialSelection = demoOffersInitialData.offers
@@ -42,11 +69,21 @@ export default function OffersPage() {
   })
 
   const { offers, stay, properties, suppliers } = offersData
-  const [property, setProperty] = useState(initialProperty)
+  const [comparison, setComparison] = useState(() =>
+    readBrowserValue(
+      OFFERS_STORAGE_KEY,
+      { property: initialProperty, selectedIds: initialSelection },
+      isSavedOfferComparison,
+    ),
+  )
+  const { property, selectedIds } = comparison
   const [supplier, setSupplier] = useState('All suppliers')
   const [search, setSearch] = useState('')
-  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelection)
   const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    writeBrowserValue(OFFERS_STORAGE_KEY, comparison)
+  }, [comparison])
 
   const propertyOffers = useMemo(
     () => offers.filter((offer) => offer.property === property),
@@ -84,33 +121,38 @@ export default function OffersPage() {
 
   function toggleOffer(id: string) {
     setNotice('')
-    setSelectedIds((current) => {
-      if (current.includes(id)) {
-        return current.filter((selectedId) => selectedId !== id)
+    setComparison((current) => {
+      if (current.selectedIds.includes(id)) {
+        return {
+          ...current,
+          selectedIds: current.selectedIds.filter((selectedId) => selectedId !== id),
+        }
       }
-      if (current.length >= 3) {
+      if (current.selectedIds.length >= 3) {
         setNotice('You can compare up to three offers at a time.')
         return current
       }
-      return [...current, id]
+      return { ...current, selectedIds: [...current.selectedIds, id] }
     })
   }
 
   function changeProperty(nextProperty: string) {
-    setProperty(nextProperty)
+    setComparison({
+      property: nextProperty,
+      selectedIds: offers
+        .filter((offer) => offer.property === nextProperty)
+        .slice(0, 2)
+        .map((offer) => offer.id),
+    })
     setSupplier('All suppliers')
     setSearch('')
-    setSelectedIds(
-      offers.filter((offer) => offer.property === nextProperty).slice(0, 2).map((offer) => offer.id),
-    )
     setNotice('')
   }
 
   function resetDemo() {
-    setProperty(initialProperty)
+    setComparison({ property: initialProperty, selectedIds: initialSelection })
     setSupplier('All suppliers')
     setSearch('')
-    setSelectedIds(initialSelection)
     setNotice('Demo comparison has been reset.')
   }
 
@@ -340,7 +382,7 @@ export default function OffersPage() {
 
       <div className="demo-disclaimer offers-disclaimer">
         <Info size={15} />
-        <span><strong>Demo workspace:</strong> Supplier rates, property details and availability are illustrative only. This comparison is calculated locally and is not connected to live supplier inventory or booking services. The lowest price does not necessarily represent the best overall commercial option.</span>
+        <span><strong>Demo workspace:</strong> Supplier rates, property details and availability are illustrative only. This comparison is calculated locally and is not connected to live supplier inventory or booking services. The lowest price does not necessarily represent the best overall commercial option. Your comparison selection is saved in this browser on this device only; it is not sent to a backend or supplier.</span>
       </div>
     </div>
   )

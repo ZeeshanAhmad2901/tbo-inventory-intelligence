@@ -18,6 +18,24 @@ export function readBrowserArray<T>(
   }
 }
 
+export function readBrowserValue<T>(
+  key: string,
+  fallback: T,
+  isValid: (value: unknown) => value is T,
+): T {
+  if (typeof window === 'undefined') return fallback
+
+  try {
+    const stored = window.localStorage.getItem(key)
+    if (!stored) return fallback
+
+    const parsed: unknown = JSON.parse(stored)
+    return isValid(parsed) ? parsed : fallback
+  } catch {
+    return fallback
+  }
+}
+
 export function writeBrowserValue<T>(key: string, value: T): void {
   if (typeof window === 'undefined') return
 
