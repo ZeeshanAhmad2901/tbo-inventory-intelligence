@@ -1,4 +1,7 @@
-﻿import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { demoOffersDataSource, demoOffersInitialData } from '../features/offers/data-source'
+import type { Offer } from '../features/offers/types'
 import {
   ArrowDown,
   ArrowUpDown,
@@ -17,132 +20,8 @@ import {
   X,
 } from 'lucide-react'
 
-type Offer = {
-  id: string
-  property: string
-  city: string
-  supplier: string
-  roomType: string
-  board: string
-  occupancy: string
-  cancellation: string
-  cancellationDeadline: string
-  total: number
-  taxes: number
-  availability: string
-  payment: string
-  perks: string
-}
-
-const stay = {
-  checkIn: '18 Dec 2026',
-  checkOut: '21 Dec 2026',
-  nights: 3,
-}
-
-const offers: Offer[] = [
-  {
-    id: 'MG-TRV-1042',
-    property: 'The Meridian Grand',
-    city: 'Mumbai, India',
-    supplier: 'TravelNest',
-    roomType: 'Deluxe King Room',
-    board: 'Room only',
-    occupancy: '2 adults',
-    cancellation: 'Free cancellation',
-    cancellationDeadline: 'Until 15 Dec 2026',
-    total: 24840,
-    taxes: 3240,
-    availability: 'Available',
-    payment: 'Pay at property',
-    perks: 'Welcome drink',
-  },
-  {
-    id: 'MG-ORB-2081',
-    property: 'The Meridian Grand',
-    city: 'Mumbai, India',
-    supplier: 'OrbitRooms',
-    roomType: 'Deluxe King Room',
-    board: 'Room only',
-    occupancy: '2 adults',
-    cancellation: 'Non-refundable',
-    cancellationDeadline: 'No cancellation',
-    total: 22110,
-    taxes: 2880,
-    availability: 'Available',
-    payment: 'Prepaid',
-    perks: 'None',
-  },
-  {
-    id: 'MG-STA-3316',
-    property: 'The Meridian Grand',
-    city: 'Mumbai, India',
-    supplier: 'StayAxis',
-    roomType: 'Deluxe King Room',
-    board: 'Room only',
-    occupancy: '2 adults',
-    cancellation: 'Free cancellation',
-    cancellationDeadline: 'Until 14 Dec 2026',
-    total: 25990,
-    taxes: 3390,
-    availability: 'Available',
-    payment: 'Pay at property',
-    perks: 'Late checkout, subject to availability',
-  },
-  {
-    id: 'HP-TRV-1120',
-    property: 'Harbour Point Suites',
-    city: 'Goa, India',
-    supplier: 'TravelNest',
-    roomType: 'Premium Sea View',
-    board: 'Breakfast included',
-    occupancy: '2 adults',
-    cancellation: 'Free cancellation',
-    cancellationDeadline: 'Until 15 Dec 2026',
-    total: 31450,
-    taxes: 4100,
-    availability: 'Available',
-    payment: 'Pay at property',
-    perks: 'Breakfast for two',
-  },
-  {
-    id: 'HP-ORB-2194',
-    property: 'Harbour Point Suites',
-    city: 'Goa, India',
-    supplier: 'OrbitRooms',
-    roomType: 'Premium Sea View',
-    board: 'Breakfast included',
-    occupancy: '2 adults',
-    cancellation: 'Non-refundable',
-    cancellationDeadline: 'No cancellation',
-    total: 29700,
-    taxes: 3870,
-    availability: 'Available',
-    payment: 'Prepaid',
-    perks: 'Breakfast for two',
-  },
-  {
-    id: 'HP-STA-3408',
-    property: 'Harbour Point Suites',
-    city: 'Goa, India',
-    supplier: 'StayAxis',
-    roomType: 'Premium Sea View',
-    board: 'Breakfast included',
-    occupancy: '2 adults',
-    cancellation: 'Free cancellation',
-    cancellationDeadline: 'Until 14 Dec 2026',
-    total: 32980,
-    taxes: 4300,
-    availability: 'Available',
-    payment: 'Pay at property',
-    perks: 'Breakfast and airport transfer',
-  },
-]
-
-const properties = [...new Set(offers.map((offer) => offer.property))]
-const suppliers = [...new Set(offers.map((offer) => offer.supplier))]
-const initialProperty = properties[0]
-const initialSelection = offers
+const initialProperty = demoOffersInitialData.properties[0]
+const initialSelection = demoOffersInitialData.offers
   .filter((offer) => offer.property === initialProperty)
   .slice(0, 2)
   .map((offer) => offer.id)
@@ -156,6 +35,13 @@ function formatPrice(value: number) {
 }
 
 export default function OffersPage() {
+  const { data: offersData } = useQuery({
+    queryKey: ['offers', 'demo'],
+    queryFn: () => demoOffersDataSource.getOffers(),
+    initialData: demoOffersInitialData,
+  })
+
+  const { offers, stay, properties, suppliers } = offersData
   const [property, setProperty] = useState(initialProperty)
   const [supplier, setSupplier] = useState('All suppliers')
   const [search, setSearch] = useState('')
@@ -164,7 +50,7 @@ export default function OffersPage() {
 
   const propertyOffers = useMemo(
     () => offers.filter((offer) => offer.property === property),
-    [property],
+    [offers, property],
   )
 
   const filteredOffers = useMemo(() => {
@@ -185,7 +71,7 @@ export default function OffersPage() {
     () => selectedIds
       .map((id) => offers.find((offer) => offer.id === id))
       .filter((offer): offer is Offer => Boolean(offer)),
-    [selectedIds],
+    [offers, selectedIds],
   )
 
   const lowestOffer = selectedOffers.length
@@ -257,8 +143,8 @@ export default function OffersPage() {
           <CalendarDays size={17} />
           <div>
             <span className="offers-field-label">STAY DATES</span>
-            <strong>{stay.checkIn} – {stay.checkOut}</strong>
-            <span className="offers-muted">{stay.nights} nights · 2 adults</span>
+            <strong>{stay.checkIn} â€“ {stay.checkOut}</strong>
+            <span className="offers-muted">{stay.nights} nights Â· 2 adults</span>
           </div>
         </div>
         <label className="offers-property-select">
@@ -285,14 +171,14 @@ export default function OffersPage() {
         <div className="metric-card">
           <span className="offers-metric-icon"><CircleDollarSign size={17} /></span>
           <span className="metric-label">LOWEST SELECTED RATE</span>
-          <strong className="offers-metric-price">{lowestOffer ? formatPrice(lowestOffer.total) : '—'}</strong>
+          <strong className="offers-metric-price">{lowestOffer ? formatPrice(lowestOffer.total) : 'â€”'}</strong>
           <span className="metric-footnote">{lowestOffer?.supplier ?? 'Select an offer to begin'}</span>
         </div>
         <div className="metric-card">
           <span className="offers-metric-icon"><Sparkles size={17} /></span>
           <span className="metric-label">PRICE SPREAD</span>
           <strong className="offers-metric-price">
-            {selectedOffers.length > 1 ? formatPrice(highestTotal - (lowestOffer?.total ?? 0)) : '—'}
+            {selectedOffers.length > 1 ? formatPrice(highestTotal - (lowestOffer?.total ?? 0)) : 'â€”'}
           </strong>
           <span className="metric-footnote">Difference across selected offers</span>
         </div>
@@ -353,7 +239,7 @@ export default function OffersPage() {
                   <div className="offers-offer-bottom">
                     <div>
                       <strong>{formatPrice(offer.total)}</strong>
-                      <span>total · incl. taxes</span>
+                      <span>total Â· incl. taxes</span>
                     </div>
                     <button
                       type="button"
