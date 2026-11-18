@@ -53,6 +53,97 @@ const initialSettings: SettingsState = {
   displayDensity: 'Comfortable',
 }
 
+type PersistedPreferences = Pick<
+  SettingsState,
+  | 'language'
+  | 'timezone'
+  | 'dateFormat'
+  | 'emailNotifications'
+  | 'reviewAlerts'
+  | 'supplierAlerts'
+  | 'weeklySummary'
+  | 'inAppNotifications'
+  | 'displayDensity'
+>
+
+const SETTINGS_STORAGE_KEY = 'tbo-inventory-demo-preferences'
+
+function loadSettings(): SettingsState {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY)
+    if (!raw) return { ...initialSettings }
+
+    const stored = JSON.parse(raw) as Partial<PersistedPreferences>
+
+    return {
+      ...initialSettings,
+      language:
+        typeof stored.language === 'string'
+          ? stored.language
+          : initialSettings.language,
+      timezone:
+        typeof stored.timezone === 'string'
+          ? stored.timezone
+          : initialSettings.timezone,
+      dateFormat:
+        typeof stored.dateFormat === 'string'
+          ? stored.dateFormat
+          : initialSettings.dateFormat,
+      emailNotifications:
+        typeof stored.emailNotifications === 'boolean'
+          ? stored.emailNotifications
+          : initialSettings.emailNotifications,
+      reviewAlerts:
+        typeof stored.reviewAlerts === 'boolean'
+          ? stored.reviewAlerts
+          : initialSettings.reviewAlerts,
+      supplierAlerts:
+        typeof stored.supplierAlerts === 'boolean'
+          ? stored.supplierAlerts
+          : initialSettings.supplierAlerts,
+      weeklySummary:
+        typeof stored.weeklySummary === 'boolean'
+          ? stored.weeklySummary
+          : initialSettings.weeklySummary,
+      inAppNotifications:
+        typeof stored.inAppNotifications === 'boolean'
+          ? stored.inAppNotifications
+          : initialSettings.inAppNotifications,
+      displayDensity:
+        stored.displayDensity === 'Compact' ||
+        stored.displayDensity === 'Comfortable'
+          ? stored.displayDensity
+          : initialSettings.displayDensity,
+    }
+  } catch {
+    return { ...initialSettings }
+  }
+}
+
+function persistSettingsPreferences(settings: SettingsState): boolean {
+  const preferences: PersistedPreferences = {
+    language: settings.language,
+    timezone: settings.timezone,
+    dateFormat: settings.dateFormat,
+    emailNotifications: settings.emailNotifications,
+    reviewAlerts: settings.reviewAlerts,
+    supplierAlerts: settings.supplierAlerts,
+    weeklySummary: settings.weeklySummary,
+    inAppNotifications: settings.inAppNotifications,
+    displayDensity: settings.displayDensity,
+  }
+
+  try {
+    window.localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify(preferences),
+    )
+    return true
+  } catch {
+    return false
+  }
+}
+
 const tabs: {
   id: SettingsTab
   label: string
@@ -147,8 +238,8 @@ function PreferenceRow({
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general')
-  const [settings, setSettings] = useState<SettingsState>(initialSettings)
-  const [savedSettings, setSavedSettings] = useState<SettingsState>(initialSettings)
+  const [settings, setSettings] = useState<SettingsState>(loadSettings)
+  const [savedSettings, setSavedSettings] = useState<SettingsState>(loadSettings)
   const [notice, setNotice] = useState('')
   const [noticeType, setNoticeType] = useState<'success' | 'error' | null>(null)
 
@@ -202,9 +293,15 @@ export default function SettingsPage() {
       return
     }
 
+    if (!persistSettingsPreferences(nextSettings)) {
+      setNotice('Could not save preferences in this browser. Check your browser storage settings and try again.')
+      setNoticeType('error')
+      return
+    }
+
     setSettings(nextSettings)
     setSavedSettings(nextSettings)
-    setNotice('Preferences applied for this demonstration session.')
+    setNotice('Preferences saved in this browser. Workspace and profile details remain session-only.')
     setNoticeType('success')
   }
 
@@ -608,8 +705,9 @@ export default function SettingsPage() {
       <div className="settings-demo-footnote">
         <Globe2 size={14} />
         <span>
-          Demonstration settings only. Preferences are held in local page state
-          and are not persisted to an account or server.
+          Demonstration settings only. Regional, notification, and display
+          preferences are saved in this browser. Workspace and profile details
+          remain session-only; nothing is saved to an account or server.
         </span>
       </div>
     </div>
