@@ -230,6 +230,10 @@ export default function AnalyticsPage() {
         </label>
       </section>
 
+      <p className="analytics-filter-note">
+        Reporting period applies to the performance indicators and activity chart. Supplier selection filters the supplier performance table and exported supplier rows.
+      </p>
+
       <section className="metrics-grid analytics-metrics" aria-label="Performance indicators">
         {metrics.map(({ label, value, change, positive, note, icon: Icon }) => (
           <article className="metric-card" key={label}>
@@ -323,7 +327,11 @@ export default function AnalyticsPage() {
           <div className="panel-heading">
             <div>
               <h2>Supplier performance</h2>
-              <p>Listing match rates and review outcomes</p>
+              <p>
+                {supplierFilter === 'All suppliers'
+                  ? 'Listing match rates and review outcomes across all suppliers'
+                  : `Listing match rates and review outcomes for ${supplierFilter}`}
+              </p>
             </div>
             <span className="analytics-panel-icon"><Users size={18} /></span>
           </div>
