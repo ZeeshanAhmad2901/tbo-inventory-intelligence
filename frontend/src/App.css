@@ -37,6 +37,55 @@
 .icon-button:hover{background:#f3f3ef;color:#172b43}
 .notification-dot{width:7px;height:7px;background:#c18e56;border:1px solid white;border-radius:50%;position:absolute;right:7px;top:6px}
 .topbar-divider{height:27px;width:1px;background:#e9e7e1}
+/* Backend API connection status */
+.backend-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.backend-status--checking {
+  color: #64748b;
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+}
+
+.backend-status--connected {
+  color: #477c75;
+  background: #edf4f0;
+  border-color: #d7e7df;
+}
+
+.backend-status--unavailable {
+  color: #94652e;
+  background: #fbf4e9;
+  border-color: #ead9bb;
+}
+
+.backend-status-spinner {
+  animation: backend-status-spin 1.2s linear infinite;
+}
+
+@keyframes backend-status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 560px) {
+  .backend-status {
+    gap: 5px;
+    padding: 6px 7px;
+    font-size: 9px;
+  }
+}
 .profile-button{border:0;background:transparent;display:flex;align-items:center;gap:9px;color:#64748b;padding:2px}
 .profile-avatar{width:34px;height:34px;border-radius:50%;background:#e8ede9;color:#477c75;display:grid;place-items:center;font-size:11px;font-weight:750}
 .profile-copy{display:flex;flex-direction:column;gap:3px;text-align:left}
