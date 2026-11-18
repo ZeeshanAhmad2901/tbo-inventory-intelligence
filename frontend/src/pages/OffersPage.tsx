@@ -143,8 +143,8 @@ export default function OffersPage() {
           <CalendarDays size={17} />
           <div>
             <span className="offers-field-label">STAY DATES</span>
-            <strong>{stay.checkIn} â€“ {stay.checkOut}</strong>
-            <span className="offers-muted">{stay.nights} nights Â· 2 adults</span>
+            <strong>{stay.checkIn} – {stay.checkOut}</strong>
+            <span className="offers-muted">{stay.nights} nights · 2 adults</span>
           </div>
         </div>
         <label className="offers-property-select">
@@ -171,14 +171,14 @@ export default function OffersPage() {
         <div className="metric-card">
           <span className="offers-metric-icon"><CircleDollarSign size={17} /></span>
           <span className="metric-label">LOWEST SELECTED RATE</span>
-          <strong className="offers-metric-price">{lowestOffer ? formatPrice(lowestOffer.total) : 'â€”'}</strong>
+          <strong className="offers-metric-price">{lowestOffer ? formatPrice(lowestOffer.total) : '—'}</strong>
           <span className="metric-footnote">{lowestOffer?.supplier ?? 'Select an offer to begin'}</span>
         </div>
         <div className="metric-card">
           <span className="offers-metric-icon"><Sparkles size={17} /></span>
           <span className="metric-label">PRICE SPREAD</span>
           <strong className="offers-metric-price">
-            {selectedOffers.length > 1 ? formatPrice(highestTotal - (lowestOffer?.total ?? 0)) : 'â€”'}
+            {selectedOffers.length > 1 ? formatPrice(highestTotal - (lowestOffer?.total ?? 0)) : '—'}
           </strong>
           <span className="metric-footnote">Difference across selected offers</span>
         </div>
@@ -239,7 +239,7 @@ export default function OffersPage() {
                   <div className="offers-offer-bottom">
                     <div>
                       <strong>{formatPrice(offer.total)}</strong>
-                      <span>total Â· incl. taxes</span>
+                      <span>total · incl. taxes</span>
                     </div>
                     <button
                       type="button"
