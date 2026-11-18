@@ -16,6 +16,7 @@ import {
   X,
   Network,
 } from 'lucide-react'
+import BackendStatus from './BackendStatus'
 
 const navigation = [
   { label: 'Overview', path: '/', icon: LayoutDashboard },
@@ -150,6 +151,7 @@ export default function AppShell() {
                 disabled
               />
             </label>
+            <BackendStatus />
             <button
               className="icon-button notification-button"
               aria-label="Notifications coming soon"
