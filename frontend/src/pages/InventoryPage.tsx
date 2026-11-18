@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   Building2,
   CheckCircle2,
+  Download,
   ChevronLeft,
   ChevronRight,
   MapPin,
@@ -158,6 +159,59 @@ export default function InventoryPage() {
     setCurrentPage(1)
   }
 
+  const exportInventory = () => {
+    const headers = [
+      'Hotel ID',
+      'Hotel Name',
+      'City',
+      'Country',
+      'Category',
+      'Address',
+      'Match Status',
+      'Hotel Updated',
+      'Supplier',
+      'Supplier Listing ID',
+      'Supplier Category',
+      'Supplier Last Updated',
+    ]
+
+    const rows = filteredHotels.flatMap((hotel) =>
+      (hotel.listings.length > 0 ? hotel.listings : [null]).map((listing) => [
+        hotel.id,
+        hotel.name,
+        hotel.city,
+        hotel.country,
+        hotel.category,
+        hotel.address,
+        hotel.status,
+        hotel.updated,
+        listing?.supplier ?? '',
+        listing?.listingId ?? '',
+        listing?.category ?? '',
+        listing?.lastUpdated ?? '',
+      ]),
+    )
+
+    const escapeCsv = (value: string | number) =>
+      `"${String(value ?? '').replace(/"/g, '""')}"`
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((value) => escapeCsv(value)).join(','))
+      .join('\r\n')
+
+    const blob = new Blob([`\uFEFF${csv}`], {
+      type: 'text/csv;charset=utf-8;',
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `tbo-inventory-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+
   const renderSortIcon = (key: SortKey) => {
     if (sortKey !== key) return <ArrowUpDown size={13} />
     return sortDirection === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />
@@ -176,6 +230,14 @@ export default function InventoryPage() {
 
         <div className="heading-actions">
           <span className="demo-label"><span /> DEMO DATA</span>
+          <button
+            className="button button-primary"
+            onClick={exportInventory}
+            disabled={filteredHotels.length === 0}
+            title="Export all filtered and sorted hotel records"
+          >
+            <Download size={16} /> Export CSV
+          </button>
         </div>
       </div>
 
