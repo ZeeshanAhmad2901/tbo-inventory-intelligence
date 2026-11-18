@@ -14,198 +14,10 @@ import {
   X,
 } from 'lucide-react'
 
-type MatchStatus = 'Matched' | 'Needs review' | 'Unmatched'
+import { useQuery } from '@tanstack/react-query'
+import { demoInventoryDataSource, demoInventoryInitialData } from '../features/inventory/data-source'
+import type { Hotel, MatchStatus, SortDirection, SortKey } from '../features/inventory/types'
 
-type SupplierListing = {
-  supplier: string
-  listingId: string
-  category: string
-  lastUpdated: string
-}
-
-type Hotel = {
-  id: string
-  name: string
-  city: string
-  country: string
-  category: string
-  address: string
-  status: MatchStatus
-  listings: SupplierListing[]
-  updated: string
-}
-
-type SortKey = 'name' | 'city' | 'listings' | 'status'
-type SortDirection = 'asc' | 'desc'
-
-const hotels: Hotel[] = [
-  {
-    id: 'HTL-1001',
-    name: 'The Grand Meridian',
-    city: 'Dubai',
-    country: 'United Arab Emirates',
-    category: '5 Star',
-    address: 'Sheikh Zayed Road, Dubai',
-    status: 'Matched',
-    updated: '17 Nov 2026',
-    listings: [
-      { supplier: 'Hotelbeds', listingId: 'HB-DXB-10482', category: 'Luxury hotel', lastUpdated: '17 Nov 2026' },
-      { supplier: 'WebBeds', listingId: 'WB-778201', category: 'Hotel', lastUpdated: '16 Nov 2026' },
-      { supplier: 'RateHawk', listingId: 'RH-550192', category: 'Hotel', lastUpdated: '16 Nov 2026' },
-    ],
-  },
-  {
-    id: 'HTL-1002',
-    name: 'Azure Bay Resort',
-    city: 'Goa',
-    country: 'India',
-    category: '5 Star',
-    address: 'Candolim Beach Road, Goa',
-    status: 'Needs review',
-    updated: '16 Nov 2026',
-    listings: [
-      { supplier: 'Hotelbeds', listingId: 'HB-GOI-20193', category: 'Resort', lastUpdated: '16 Nov 2026' },
-      { supplier: 'TBO Holidays', listingId: 'TBO-GOI-8821', category: 'Beach resort', lastUpdated: '15 Nov 2026' },
-    ],
-  },
-  {
-    id: 'HTL-1003',
-    name: 'Parkview Suites',
-    city: 'Singapore',
-    country: 'Singapore',
-    category: '4 Star',
-    address: 'Orchard Road, Singapore',
-    status: 'Matched',
-    updated: '15 Nov 2026',
-    listings: [
-      { supplier: 'WebBeds', listingId: 'WB-SIN-12093', category: 'Serviced apartment', lastUpdated: '15 Nov 2026' },
-      { supplier: 'RateHawk', listingId: 'RH-SIN-33012', category: 'Hotel', lastUpdated: '14 Nov 2026' },
-    ],
-  },
-  {
-    id: 'HTL-1004',
-    name: 'Cedar Court Hotel',
-    city: 'London',
-    country: 'United Kingdom',
-    category: '4 Star',
-    address: 'Kensington High Street, London',
-    status: 'Unmatched',
-    updated: '14 Nov 2026',
-    listings: [
-      { supplier: 'Hotelbeds', listingId: 'HB-LON-44102', category: 'Hotel', lastUpdated: '14 Nov 2026' },
-    ],
-  },
-  {
-    id: 'HTL-1005',
-    name: 'Lotus Grand Palace',
-    city: 'Bangkok',
-    country: 'Thailand',
-    category: '5 Star',
-    address: 'Sukhumvit Road, Bangkok',
-    status: 'Matched',
-    updated: '13 Nov 2026',
-    listings: [
-      { supplier: 'Hotelbeds', listingId: 'HB-BKK-90122', category: 'Luxury hotel', lastUpdated: '13 Nov 2026' },
-      { supplier: 'WebBeds', listingId: 'WB-BKK-77102', category: 'Hotel', lastUpdated: '13 Nov 2026' },
-      { supplier: 'TBO Holidays', listingId: 'TBO-BKK-11903', category: 'Hotel', lastUpdated: '12 Nov 2026' },
-    ],
-  },
-  {
-    id: 'HTL-1006',
-    name: 'Harbour Lights Hotel',
-    city: 'Sydney',
-    country: 'Australia',
-    category: '4 Star',
-    address: 'Darling Harbour, Sydney',
-    status: 'Needs review',
-    updated: '12 Nov 2026',
-    listings: [
-      { supplier: 'RateHawk', listingId: 'RH-SYD-60021', category: 'Hotel', lastUpdated: '12 Nov 2026' },
-      { supplier: 'WebBeds', listingId: 'WB-SYD-88201', category: 'Hotel', lastUpdated: '11 Nov 2026' },
-    ],
-  },
-  {
-    id: 'HTL-1007',
-    name: 'Alpine View Lodge',
-    city: 'Zurich',
-    country: 'Switzerland',
-    category: '3 Star',
-    address: 'Bahnhofstrasse, Zurich',
-    status: 'Matched',
-    updated: '11 Nov 2026',
-    listings: [
-      { supplier: 'Hotelbeds', listingId: 'HB-ZRH-33018', category: 'Lodge', lastUpdated: '11 Nov 2026' },
-    ],
-  },
-  {
-    id: 'HTL-1008',
-    name: 'The Palm Residency',
-    city: 'Mumbai',
-    country: 'India',
-    category: '4 Star',
-    address: 'Juhu Tara Road, Mumbai',
-    status: 'Unmatched',
-    updated: '10 Nov 2026',
-    listings: [
-      { supplier: 'TBO Holidays', listingId: 'TBO-BOM-44019', category: 'Hotel', lastUpdated: '10 Nov 2026' },
-    ],
-  },
-  {
-    id: 'HTL-1009',
-    name: 'Riverside Grand',
-    city: 'Paris',
-    country: 'France',
-    category: '5 Star',
-    address: 'Quai de la Seine, Paris',
-    status: 'Matched',
-    updated: '09 Nov 2026',
-    listings: [
-      { supplier: 'WebBeds', listingId: 'WB-PAR-55021', category: 'Hotel', lastUpdated: '09 Nov 2026' },
-      { supplier: 'RateHawk', listingId: 'RH-PAR-77102', category: 'Hotel', lastUpdated: '08 Nov 2026' },
-    ],
-  },
-  {
-    id: 'HTL-1010',
-    name: 'Maple Leaf Inn',
-    city: 'Toronto',
-    country: 'Canada',
-    category: '3 Star',
-    address: 'King Street West, Toronto',
-    status: 'Needs review',
-    updated: '08 Nov 2026',
-    listings: [
-      { supplier: 'Hotelbeds', listingId: 'HB-YYZ-90111', category: 'Inn', lastUpdated: '08 Nov 2026' },
-      { supplier: 'TBO Holidays', listingId: 'TBO-YYZ-20118', category: 'Hotel', lastUpdated: '07 Nov 2026' },
-    ],
-  },
-  {
-    id: 'HTL-1011',
-    name: 'Coral Sands Retreat',
-    city: 'Maldives',
-    country: 'Maldives',
-    category: '5 Star',
-    address: 'North Malé Atoll, Maldives',
-    status: 'Matched',
-    updated: '07 Nov 2026',
-    listings: [
-      { supplier: 'RateHawk', listingId: 'RH-MLE-10291', category: 'Resort', lastUpdated: '07 Nov 2026' },
-      { supplier: 'WebBeds', listingId: 'WB-MLE-77109', category: 'Resort', lastUpdated: '06 Nov 2026' },
-    ],
-  },
-  {
-    id: 'HTL-1012',
-    name: 'City Central Hotel',
-    city: 'New Delhi',
-    country: 'India',
-    category: '3 Star',
-    address: 'Connaught Place, New Delhi',
-    status: 'Unmatched',
-    updated: '06 Nov 2026',
-    listings: [
-      { supplier: 'TBO Holidays', listingId: 'TBO-DEL-33082', category: 'Hotel', lastUpdated: '06 Nov 2026' },
-    ],
-  },
-]
 
 const statusClass: Record<MatchStatus, string> = {
   Matched: 'status-connected',
@@ -216,6 +28,12 @@ const statusClass: Record<MatchStatus, string> = {
 const pageSize = 8
 
 export default function InventoryPage() {
+  const { data: inventoryData } = useQuery({
+    queryKey: ['inventory', 'demo'],
+    queryFn: () => demoInventoryDataSource.getInventory(),
+    initialData: demoInventoryInitialData,
+  })
+  const { hotels } = inventoryData
   const [search, setSearch] = useState('')
   const [countryFilter, setCountryFilter] = useState('All countries')
   const [categoryFilter, setCategoryFilter] = useState('All categories')
@@ -311,7 +129,7 @@ export default function InventoryPage() {
 
       return comparison * direction
     })
-  }, [search, countryFilter, categoryFilter, statusFilter, sortKey, sortDirection])
+  }, [hotels, search, countryFilter, categoryFilter, statusFilter, sortKey, sortDirection])
 
   const totalListings = hotels.reduce(
     (total, hotel) => total + hotel.listings.length,
@@ -439,7 +257,7 @@ export default function InventoryPage() {
               aria-label="Filter by country"
             >
               <option>All countries</option>
-              {[...new Set(hotels.map((hotel) => hotel.country))].sort().map((country) => (
+              {inventoryData.countries.map((country) => (
                 <option key={country}>{country}</option>
               ))}
             </select>
@@ -451,9 +269,9 @@ export default function InventoryPage() {
               aria-label="Filter by hotel category"
             >
               <option>All categories</option>
-              <option>5 Star</option>
-              <option>4 Star</option>
-              <option>3 Star</option>
+              {inventoryData.categories.map((category) => (
+                <option key={category}>{category}</option>
+              ))}
             </select>
 
             <select
