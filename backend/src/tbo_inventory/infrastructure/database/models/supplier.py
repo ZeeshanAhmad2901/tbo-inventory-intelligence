@@ -10,6 +10,7 @@ from tbo_inventory.infrastructure.database.base import Base
 
 if TYPE_CHECKING:
     from tbo_inventory.infrastructure.database.models.import_job import ImportJob
+    from tbo_inventory.infrastructure.database.models.supplier_product import SupplierProduct
 
 
 class Supplier(Base):
@@ -42,5 +43,9 @@ class Supplier(Base):
     )
 
     import_jobs: Mapped[list["ImportJob"]] = relationship(
+        back_populates="supplier",
+    )
+
+    supplier_products: Mapped[list["SupplierProduct"]] = relationship(
         back_populates="supplier",
     )
