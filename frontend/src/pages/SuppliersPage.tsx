@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   Building2,
   CheckCircle2,
+  Download,
   Link2,
   Search,
   ShieldCheck,
@@ -151,6 +152,45 @@ export default function SuppliersPage() {
     0,
   )
 
+  const exportSuppliers = () => {
+    const headers = [
+      'Supplier',
+      'Listings',
+      'Connection Status',
+      'Last Updated',
+      'Sync Frequency',
+      'Description',
+    ]
+
+    const rows = filteredSuppliers.map((supplier) => [
+      supplier.name,
+      supplier.listings,
+      supplier.status,
+      supplier.updated,
+      supplier.frequency,
+      supplier.description,
+    ])
+
+    const escapeCsv = (value: string | number) =>
+      `"${String(value ?? '').replace(/"/g, '""')}"`
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map(escapeCsv).join(','))
+      .join('\r\n')
+
+    const blob = new Blob([`\uFEFF${csv}`], {
+      type: 'text/csv;charset=utf-8;',
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `tbo-suppliers-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="suppliers-page">
       <div className="page-heading">
@@ -224,7 +264,17 @@ export default function SuppliersPage() {
             <h2>Supplier directory</h2>
             <p>Review inventory sources and their connection information</p>
           </div>
-          <span className="demo-label"><span /> ILLUSTRATIVE RECORDS</span>
+          <div className="heading-actions">
+            <span className="demo-label"><span /> ILLUSTRATIVE RECORDS</span>
+            <button
+              className="button button-secondary"
+              onClick={exportSuppliers}
+              disabled={filteredSuppliers.length === 0}
+              title="Export all suppliers matching the current search and status filter"
+            >
+              <Download size={15} /> Export CSV
+            </button>
+          </div>
         </div>
 
         <div className="supplier-toolbar">
