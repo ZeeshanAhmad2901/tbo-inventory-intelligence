@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from tbo_inventory.config import settings
 from tbo_inventory.infrastructure.database.session import get_db
+from tbo_inventory.modules.ingestion.router import router as ingestion_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -42,3 +43,6 @@ def list_suppliers(db: Annotated[Session, Depends(get_db)]) -> list[dict[str, An
     )
 
     return [dict(row) for row in result.mappings().all()]
+
+
+app.include_router(ingestion_router)

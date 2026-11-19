@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react'
 import { apiRequest } from '../lib/api-client'
+import SupplierInventoryImport from '../components/SupplierInventoryImport'
 
 type Supplier = {
   id: string
@@ -278,6 +279,8 @@ export default function SuppliersPage() {
           </div>
         </article>
       </section>
+
+      <SupplierInventoryImport suppliers={suppliers} />
 
       <section className="panel suppliers-directory">
         <div className="panel-heading">

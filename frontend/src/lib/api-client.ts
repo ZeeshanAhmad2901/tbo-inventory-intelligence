@@ -44,3 +44,28 @@ export async function apiRequest<T>(
 
   return response.json() as Promise<T>
 }
+
+
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+    body: formData,
+  })
+
+  if (!response.ok) {
+    let message = `API request failed with status ${response.status}`
+    try {
+      const payload = await response.json() as { detail?: string }
+      if (payload.detail) message = payload.detail
+    } catch {
+      // Keep the HTTP status message when the response is not JSON.
+    }
+    throw new ApiError(message, response.status)
+  }
+
+  return response.json() as Promise<T>
+}
