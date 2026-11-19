@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI
 from sqlalchemy import text
@@ -29,7 +29,7 @@ def health() -> dict[str, str]:
 
 
 @app.get("/api/suppliers", tags=["suppliers"])
-def list_suppliers(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+def list_suppliers(db: Annotated[Session, Depends(get_db)]) -> list[dict[str, Any]]:
     """Return persisted supplier directory records."""
     result = db.execute(
         text(

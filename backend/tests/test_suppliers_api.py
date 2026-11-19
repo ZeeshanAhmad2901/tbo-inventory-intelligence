@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
@@ -24,8 +24,8 @@ def test_list_suppliers_returns_database_records() -> None:
         "code": "HOTELBEDS",
         "name": "Hotelbeds",
         "is_active": True,
-        "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
-        "updated_at": datetime(2026, 1, 2, tzinfo=timezone.utc),
+        "created_at": datetime(2026, 1, 1, tzinfo=UTC),
+        "updated_at": datetime(2026, 1, 2, tzinfo=UTC),
     }
     client, db = make_client_with_database_result([supplier])
 
