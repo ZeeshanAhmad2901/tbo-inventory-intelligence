@@ -10,76 +10,99 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react'
-
-type SupplierStatus = 'Connected' | 'Processing' | 'Attention' | 'Not connected'
+import { apiRequest } from '../lib/api-client'
 
 type Supplier = {
+  id: string
+  code: string
   name: string
-  initials: string
-  color: string
-  listings: string
-  status: SupplierStatus
-  updated: string
-  frequency: string
-  description: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
-const suppliers: Supplier[] = [
-  {
-    name: 'Hotelbeds',
-    initials: 'HB',
-    color: 'supplier-blue',
-    listings: '12,840',
-    status: 'Connected',
-    updated: '8 min ago',
-    frequency: 'Every 30 minutes',
-    description: 'Hotel inventory distribution and accommodation content.',
-  },
-  {
-    name: 'WebBeds',
-    initials: 'WB',
-    color: 'supplier-green',
-    listings: '9,620',
-    status: 'Connected',
-    updated: '24 min ago',
-    frequency: 'Every hour',
-    description: 'Global accommodation inventory distribution.',
-  },
-  {
-    name: 'RateHawk',
-    initials: 'RH',
-    color: 'supplier-purple',
-    listings: '8,410',
-    status: 'Processing',
-    updated: '41 min ago',
-    frequency: 'Every hour',
-    description: 'Hotel and accommodation inventory aggregation.',
-  },
-  {
-    name: 'TBO Holidays',
-    initials: 'TB',
-    color: 'supplier-gold',
-    listings: '7,772',
-    status: 'Attention',
-    updated: '2 hours ago',
-    frequency: 'Every 30 minutes',
-    description: 'Travel inventory distribution and hotel supply.',
-  },
-]
+type SupplierStatus = 'Active' | 'Inactive'
+type StatusFilter = 'All statuses' | SupplierStatus
 
 const statusClass: Record<SupplierStatus, string> = {
-  Connected: 'status-connected',
-  Processing: 'status-processing',
-  Attention: 'status-attention',
-  'Not connected': 'status-disconnected',
+  Active: 'status-connected',
+  Inactive: 'status-disconnected',
+}
+
+function getInitials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+}
+
+function getSupplierColor(code: string): string {
+  const colors = [
+    'supplier-blue',
+    'supplier-green',
+    'supplier-purple',
+    'supplier-gold',
+  ]
+  const hash = [...code].reduce((total, character) => total + character.charCodeAt(0), 0)
+  return colors[hash % colors.length]
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return 'Unavailable'
+
+  return new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
 }
 
 export default function SuppliersPage() {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All statuses')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All statuses')
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null)
+
   const detailPanelRef = useRef<HTMLElement | null>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadSuppliers = async () => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const records = await apiRequest<Supplier[]>('/suppliers')
+
+        if (!cancelled) {
+          setSuppliers(records)
+        }
+      } catch {
+        if (!cancelled) {
+          setError('Unable to load suppliers. Check the API connection and try again.')
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void loadSuppliers()
+
+    return () => {
+      cancelled = true
+    }
+  }, [refreshKey])
 
   useEffect(() => {
     if (!selectedSupplier) return
@@ -134,41 +157,37 @@ export default function SuppliersPage() {
 
     return suppliers.filter((supplier) => {
       const matchesSearch =
-        supplier.name.toLowerCase().includes(query)
+        supplier.name.toLowerCase().includes(query) ||
+        supplier.code.toLowerCase().includes(query)
 
+      const status: SupplierStatus = supplier.is_active ? 'Active' : 'Inactive'
       const matchesStatus =
-        statusFilter === 'All statuses' || supplier.status === statusFilter
+        statusFilter === 'All statuses' || status === statusFilter
 
       return matchesSearch && matchesStatus
     })
-  }, [search, statusFilter])
+  }, [suppliers, search, statusFilter])
 
-  const connectedCount = suppliers.filter(
-    (supplier) => supplier.status === 'Connected',
-  ).length
-
-  const totalListings = suppliers.reduce(
-    (total, supplier) => total + Number(supplier.listings.replace(',', '')),
-    0,
-  )
+  const activeCount = suppliers.filter((supplier) => supplier.is_active).length
+  const inactiveCount = suppliers.length - activeCount
 
   const exportSuppliers = () => {
     const headers = [
-      'Supplier',
-      'Listings',
-      'Connection Status',
-      'Last Updated',
-      'Sync Frequency',
-      'Description',
+      'Supplier ID',
+      'Supplier Code',
+      'Supplier Name',
+      'Active',
+      'Created At',
+      'Updated At',
     ]
 
     const rows = filteredSuppliers.map((supplier) => [
+      supplier.id,
+      supplier.code,
       supplier.name,
-      supplier.listings,
-      supplier.status,
-      supplier.updated,
-      supplier.frequency,
-      supplier.description,
+      supplier.is_active ? 'Yes' : 'No',
+      supplier.created_at,
+      supplier.updated_at,
     ])
 
     const escapeCsv = (value: string | number) =>
@@ -198,13 +217,17 @@ export default function SuppliersPage() {
           <div className="eyebrow">INVENTORY SOURCES</div>
           <h1>Suppliers</h1>
           <p className="page-description">
-            Manage supplier sources and monitor inventory connection health.
+            Review configured supplier records and their database status.
           </p>
         </div>
 
         <div className="heading-actions">
-          <span className="demo-label"><span /> DEMO DATA</span>
-          <button className="button button-primary" disabled title="Supplier integration is not implemented yet">
+          <span className="demo-label"><span /> DATABASE-BACKED</span>
+          <button
+            className="button button-primary"
+            disabled
+            title="Supplier integration is not implemented yet"
+          >
             <Link2 size={15} /> Connect supplier
           </button>
         </div>
@@ -216,44 +239,42 @@ export default function SuppliersPage() {
             <span className="metric-label">Total suppliers</span>
             <span className="metric-icon"><Building2 size={18} /></span>
           </div>
-          <div className="metric-value">{suppliers.length}</div>
+          <div className="metric-value">{loading ? '—' : suppliers.length}</div>
           <div className="metric-foot">
-            <span className="metric-note">Configured demo sources</span>
+            <span className="metric-note">Persisted supplier records</span>
           </div>
         </article>
 
         <article className="metric-card">
           <div className="metric-top">
-            <span className="metric-label">Connected</span>
+            <span className="metric-label">Active suppliers</span>
             <span className="metric-icon"><CheckCircle2 size={18} /></span>
           </div>
-          <div className="metric-value">{connectedCount}</div>
+          <div className="metric-value">{loading ? '—' : activeCount}</div>
           <div className="metric-foot">
-            <span className="metric-note">Illustrative connection states</span>
+            <span className="metric-note">Enabled in the database</span>
           </div>
         </article>
 
         <article className="metric-card">
           <div className="metric-top">
-            <span className="metric-label">Supplier listings</span>
-            <span className="metric-icon"><Building2 size={18} /></span>
-          </div>
-          <div className="metric-value">{totalListings.toLocaleString('en-IN')}</div>
-          <div className="metric-foot">
-            <span className="metric-note">Illustrative inventory volume</span>
-          </div>
-        </article>
-
-        <article className="metric-card">
-          <div className="metric-top">
-            <span className="metric-label">Needs attention</span>
+            <span className="metric-label">Inactive suppliers</span>
             <span className="metric-icon"><AlertCircle size={18} /></span>
           </div>
-          <div className="metric-value">
-            {suppliers.filter((supplier) => supplier.status === 'Attention').length}
-          </div>
+          <div className="metric-value">{loading ? '—' : inactiveCount}</div>
           <div className="metric-foot">
-            <span className="metric-note">Demo status only</span>
+            <span className="metric-note">Disabled in the database</span>
+          </div>
+        </article>
+
+        <article className="metric-card">
+          <div className="metric-top">
+            <span className="metric-label">Directory source</span>
+            <span className="metric-icon"><ShieldCheck size={18} /></span>
+          </div>
+          <div className="metric-value">API</div>
+          <div className="metric-foot">
+            <span className="metric-note">Read-only database records</span>
           </div>
         </article>
       </section>
@@ -262,15 +283,15 @@ export default function SuppliersPage() {
         <div className="panel-heading">
           <div>
             <h2>Supplier directory</h2>
-            <p>Review inventory sources and their connection information</p>
+            <p>Review supplier records stored in the application database</p>
           </div>
           <div className="heading-actions">
-            <span className="demo-label"><span /> ILLUSTRATIVE RECORDS</span>
+            <span className="demo-label"><span /> DATABASE RECORDS</span>
             <button
               className="button button-secondary"
               onClick={exportSuppliers}
-              disabled={filteredSuppliers.length === 0}
-              title="Export all suppliers matching the current search and status filter"
+              disabled={loading || Boolean(error) || filteredSuppliers.length === 0}
+              title="Export suppliers matching the current search and status filter"
             >
               <Download size={15} /> Export CSV
             </button>
@@ -282,7 +303,7 @@ export default function SuppliersPage() {
             <Search size={16} />
             <input
               type="search"
-              placeholder="Search suppliers..."
+              placeholder="Search suppliers by name or code..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               aria-label="Search suppliers"
@@ -292,14 +313,12 @@ export default function SuppliersPage() {
           <select
             className="supplier-filter"
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            aria-label="Filter by connection status"
+            onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+            aria-label="Filter by supplier status"
           >
             <option>All statuses</option>
-            <option>Connected</option>
-            <option>Processing</option>
-            <option>Attention</option>
-            <option>Not connected</option>
+            <option>Active</option>
+            <option>Inactive</option>
           </select>
         </div>
 
@@ -308,50 +327,77 @@ export default function SuppliersPage() {
             <thead>
               <tr>
                 <th>SUPPLIER</th>
-                <th>LISTINGS</th>
-                <th>CONNECTION STATUS</th>
-                <th>SYNC FREQUENCY</th>
+                <th>SUPPLIER CODE</th>
+                <th>STATUS</th>
                 <th>LAST UPDATED</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {filteredSuppliers.map((supplier) => (
-                <tr key={supplier.name}>
-                  <td>
-                    <div className="supplier-name">
-                      <span className={`supplier-avatar ${supplier.color}`}>
-                        {supplier.initials}
-                      </span>
-                      <strong>{supplier.name}</strong>
-                    </div>
+              {loading && (
+                <tr>
+                  <td colSpan={5} className="supplier-empty" role="status">
+                    Loading supplier records...
                   </td>
-                  <td className="table-number">{supplier.listings}</td>
-                  <td>
-                    <span className={`status-pill ${statusClass[supplier.status]}`}>
-                      <i />{supplier.status}
-                    </span>
-                  </td>
-                  <td>{supplier.frequency}</td>
-                  <td className="updated-cell">{supplier.updated}</td>
-                  <td>
+                </tr>
+              )}
+
+              {!loading && error && (
+                <tr>
+                  <td colSpan={5} className="supplier-empty" role="alert">
+                    <div>{error}</div>
                     <button
-                      className="button button-secondary supplier-view-button"
-                      aria-label={`View details for ${supplier.name}`}
-                      onClick={(event) => {
-                        previousFocusRef.current = event.currentTarget
-                        setSelectedSupplier(supplier)
-                      }}
+                      className="button button-secondary"
+                      onClick={() => setRefreshKey((current) => current + 1)}
                     >
-                      Details <ArrowUpRight size={13} />
+                      Retry
                     </button>
                   </td>
                 </tr>
-              ))}
-              {filteredSuppliers.length === 0 && (
+              )}
+
+              {!loading && !error && filteredSuppliers.map((supplier) => {
+                const status: SupplierStatus = supplier.is_active ? 'Active' : 'Inactive'
+
+                return (
+                  <tr key={supplier.id}>
+                    <td>
+                      <div className="supplier-name">
+                        <span className={`supplier-avatar ${getSupplierColor(supplier.code)}`}>
+                          {getInitials(supplier.name)}
+                        </span>
+                        <strong>{supplier.name}</strong>
+                      </div>
+                    </td>
+                    <td className="table-number">{supplier.code}</td>
+                    <td>
+                      <span className={`status-pill ${statusClass[status]}`}>
+                        <i />{status}
+                      </span>
+                    </td>
+                    <td className="updated-cell">{formatDate(supplier.updated_at)}</td>
+                    <td>
+                      <button
+                        className="button button-secondary supplier-view-button"
+                        aria-label={`View details for ${supplier.name}`}
+                        onClick={(event) => {
+                          previousFocusRef.current = event.currentTarget
+                          setSelectedSupplier(supplier)
+                        }}
+                      >
+                        Details <ArrowUpRight size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+
+              {!loading && !error && filteredSuppliers.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="supplier-empty">
-                    No suppliers match your search or selected status.
+                  <td colSpan={5} className="supplier-empty">
+                    {suppliers.length === 0
+                      ? 'No supplier records have been configured yet.'
+                      : 'No suppliers match your search or selected status.'}
                   </td>
                 </tr>
               )}
@@ -365,7 +411,11 @@ export default function SuppliersPage() {
           aria-live="polite"
           aria-atomic="true"
         >
-          Showing {filteredSuppliers.length} of {suppliers.length} suppliers
+          {loading
+            ? 'Loading supplier directory...'
+            : error
+              ? 'Supplier directory unavailable'
+              : `Showing ${filteredSuppliers.length} of ${suppliers.length} suppliers`}
         </div>
       </section>
 
@@ -395,43 +445,50 @@ export default function SuppliersPage() {
             </div>
 
             <div className="supplier-detail-identity">
-              <span className={`supplier-avatar ${selectedSupplier.color}`}>
-                {selectedSupplier.initials}
+              <span className={`supplier-avatar ${getSupplierColor(selectedSupplier.code)}`}>
+                {getInitials(selectedSupplier.name)}
               </span>
               <div>
                 <strong>{selectedSupplier.name}</strong>
-                <span>Demonstration supplier record</span>
+                <span>Database supplier record</span>
               </div>
             </div>
 
             <p id="supplier-detail-description" className="supplier-detail-description">
-              {selectedSupplier.description}
+              Supplier information retrieved from the application database.
             </p>
 
             <div className="supplier-detail-row">
-              <span>Connection status</span>
-              <strong className={`status-pill ${statusClass[selectedSupplier.status]}`}>
-                <i />{selectedSupplier.status}
+              <span>Supplier code</span>
+              <strong>{selectedSupplier.code}</strong>
+            </div>
+            <div className="supplier-detail-row">
+              <span>Database status</span>
+              <strong
+                className={`status-pill ${statusClass[selectedSupplier.is_active ? 'Active' : 'Inactive']}`}
+              >
+                <i />{selectedSupplier.is_active ? 'Active' : 'Inactive'}
               </strong>
             </div>
             <div className="supplier-detail-row">
-              <span>Inventory listings</span>
-              <strong>{selectedSupplier.listings}</strong>
+              <span>Supplier ID</span>
+              <strong>{selectedSupplier.id}</strong>
             </div>
             <div className="supplier-detail-row">
-              <span>Sync frequency</span>
-              <strong>{selectedSupplier.frequency}</strong>
+              <span>Created at</span>
+              <strong>{formatDate(selectedSupplier.created_at)}</strong>
             </div>
             <div className="supplier-detail-row">
               <span>Last updated</span>
-              <strong>{selectedSupplier.updated}</strong>
+              <strong>{formatDate(selectedSupplier.updated_at)}</strong>
             </div>
 
             <div className="supplier-detail-note">
               <ShieldCheck size={17} />
               <span>
-                This is illustrative information. No live supplier connection,
-                credentials, or synchronization is configured.
+                This record confirms supplier configuration only. No live supplier
+                connection, credentials, inventory synchronization, or listing
+                counts are implied.
               </span>
             </div>
 
@@ -446,8 +503,8 @@ export default function SuppliersPage() {
       )}
 
       <p className="demo-disclaimer">
-        All supplier names, listing counts, statuses, and synchronization details
-        on this page are illustrative demo data, not live supplier integrations.
+        Supplier records and database status are retrieved from the application API.
+        Supplier connectivity and inventory synchronization are not yet implemented.
       </p>
     </div>
   )
