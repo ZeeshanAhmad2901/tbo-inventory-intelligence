@@ -1,6 +1,11 @@
-from fastapi import FastAPI
+from typing import Any
+
+from fastapi import Depends, FastAPI
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from tbo_inventory.config import settings
+from tbo_inventory.infrastructure.database.session import get_db
 
 app = FastAPI(
     title=settings.app_name,
@@ -21,3 +26,19 @@ def root() -> dict[str, str]:
 @app.get("/health", tags=["meta"])
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/suppliers", tags=["suppliers"])
+def list_suppliers(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    """Return persisted supplier directory records."""
+    result = db.execute(
+        text(
+            """
+            SELECT id, code, name, is_active, created_at, updated_at
+            FROM suppliers
+            ORDER BY name ASC, code ASC
+            """
+        )
+    )
+
+    return [dict(row) for row in result.mappings().all()]
