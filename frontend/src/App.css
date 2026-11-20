@@ -4170,3 +4170,27 @@
   opacity: .45;
   cursor: not-allowed;
 }
+
+/* Authentication screens */
+.auth-page{min-height:100vh;display:grid;place-items:center;padding:32px 20px;background:var(--surface,#f5f6f4)}
+.auth-card{width:min(100%,440px);padding:36px;background:#fff;border:1px solid var(--border,#e5e8e5);border-radius:18px;box-shadow:0 18px 55px rgba(24,39,55,.08)}
+.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:34px}
+.auth-brand-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#173b42;color:#fff}
+.auth-heading{margin:0 0 8px;color:#172d35;font-size:26px;font-weight:700;letter-spacing:-.5px}
+.auth-eyebrow{margin:0 0 8px;color:#688078;font-size:11px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase}
+.auth-description{margin:0 0 26px;color:#66747a;font-size:14px;line-height:1.6}
+.auth-form{display:grid;gap:17px}
+.auth-form label{display:grid;gap:7px;color:#34464d;font-size:13px;font-weight:600}
+.auth-form input{width:100%;min-height:44px;padding:10px 12px;border:1px solid #d9e0df;border-radius:8px;background:#fff;color:#172d35;font:inherit;outline:none}
+.auth-form input:focus{border-color:#397c73;box-shadow:0 0 0 3px rgba(57,124,115,.12)}
+.auth-form-meta{display:flex;justify-content:flex-end;font-size:13px}
+.auth-page a{color:#28756b;font-weight:600;text-decoration:none}
+.auth-page a:hover{text-decoration:underline}
+.auth-error{padding:11px 13px;border:1px solid #f0caca;border-radius:8px;background:#fff5f5;color:#a33b3b;font-size:13px}
+.auth-success{padding:11px 13px;border:1px solid #cce5d8;border-radius:8px;background:#f1faf5;color:#276b4b;font-size:13px}
+.auth-submit{width:100%;min-height:46px;border:0;border-radius:8px;background:#173b42;color:#fff;font:inherit;font-weight:650;cursor:pointer}
+.auth-submit:hover{background:#24565a}
+.auth-submit:disabled{opacity:.6;cursor:not-allowed}
+.auth-switch{margin:22px 0 0;text-align:center;color:#68777c;font-size:13px}
+.auth-footer{margin-top:26px;text-align:center;color:#8a9698;font-size:11px}
+@media(max-width:480px){.auth-card{padding:26px 22px}.auth-heading{font-size:23px}}

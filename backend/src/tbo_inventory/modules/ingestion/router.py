@@ -8,13 +8,18 @@ from sqlalchemy.orm import Session
 from tbo_inventory.infrastructure.database.models.import_job import ImportJob
 from tbo_inventory.infrastructure.database.models.raw_record import RawRecord
 from tbo_inventory.infrastructure.database.session import get_db
+from tbo_inventory.modules.auth.router import get_current_user, require_csrf
 from tbo_inventory.modules.ingestion.service import (
     MAX_FILE_SIZE,
     process_import,
     serialize_job,
 )
 
-router = APIRouter(prefix="/api/ingestion", tags=["ingestion"])
+router = APIRouter(
+    prefix="/api/ingestion",
+    tags=["ingestion"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.post("/imports", status_code=201)
@@ -22,6 +27,7 @@ async def upload_inventory(
     supplier_id: Annotated[UUID, Form()],
     file: Annotated[UploadFile, File()],
     db: Annotated[Session, Depends(get_db)],
+    _: Annotated[None, Depends(require_csrf)],
 ) -> dict:
     filename = file.filename or "inventory"
     content = await file.read(MAX_FILE_SIZE + 1)

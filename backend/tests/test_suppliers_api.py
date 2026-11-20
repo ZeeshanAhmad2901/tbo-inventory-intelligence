@@ -1,10 +1,13 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from tbo_inventory.infrastructure.database.models.user import User
 from tbo_inventory.infrastructure.database.session import get_db
 from tbo_inventory.main import app
+from tbo_inventory.modules.auth.router import get_current_user
 
 
 def make_client_with_database_result(rows: list[dict]) -> tuple[TestClient, MagicMock]:
@@ -14,7 +17,16 @@ def make_client_with_database_result(rows: list[dict]) -> tuple[TestClient, Magi
     def override_get_db():
         yield db
 
+    test_user = User(
+        id=uuid4(),
+        email="supplier-test@example.com",
+        full_name="Supplier Test",
+        password_hash="test-hash",
+        role="viewer",
+        is_active=True,
+    )
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = lambda: test_user
     return TestClient(app), db
 
 
