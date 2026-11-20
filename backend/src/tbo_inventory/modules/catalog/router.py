@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from tbo_inventory.infrastructure.database.session import get_db
 from tbo_inventory.infrastructure.database.models.user import User
+from tbo_inventory.infrastructure.database.session import get_db
 from tbo_inventory.modules.auth.router import get_current_user
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])

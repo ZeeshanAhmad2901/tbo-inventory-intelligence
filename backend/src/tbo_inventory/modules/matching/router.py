@@ -15,7 +15,6 @@ from tbo_inventory.infrastructure.database.models.user import User
 from tbo_inventory.infrastructure.database.session import get_db
 from tbo_inventory.modules.auth.router import get_current_user, require_csrf
 
-
 router = APIRouter(
     prefix="/api/matching",
     tags=["supplier matching"],

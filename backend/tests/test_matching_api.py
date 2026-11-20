@@ -2,6 +2,14 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+from fastapi.testclient import TestClient
+
+from tbo_inventory.config import settings
+from tbo_inventory.infrastructure.database.models.user import User
+from tbo_inventory.infrastructure.database.session import get_db
+from tbo_inventory.main import app
+from tbo_inventory.modules.auth.router import get_current_user
+from tbo_inventory.modules.auth.security import generate_csrf_token
 from tbo_inventory.modules.matching.router import (
     _normalise,
     _pair_key,
@@ -69,15 +77,6 @@ def test_missing_attributes_do_not_create_false_evidence() -> None:
 
     assert score == 100
     assert len(evidence) == 1
-
-from fastapi.testclient import TestClient
-
-from tbo_inventory.config import settings
-from tbo_inventory.infrastructure.database.models.user import User
-from tbo_inventory.infrastructure.database.session import get_db
-from tbo_inventory.main import app
-from tbo_inventory.modules.auth.router import get_current_user
-from tbo_inventory.modules.auth.security import generate_csrf_token
 
 
 def make_user(role: str = "viewer") -> User:
