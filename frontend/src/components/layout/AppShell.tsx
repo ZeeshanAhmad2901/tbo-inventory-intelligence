@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Building2,
@@ -15,8 +15,10 @@ import {
   Menu,
   X,
   Network,
+  LogOut,
 } from 'lucide-react'
 import BackendStatus from './BackendStatus'
+import { useAuth } from '../../features/auth/auth-context-value'
 
 const navigation = [
   { label: 'Overview', path: '/', icon: LayoutDashboard },
@@ -30,6 +32,8 @@ const navigation = [
 
 export default function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const menuButtonRef = useRef<HTMLButtonElement>(null)
 
   function closeMobileNavigation() {
@@ -161,10 +165,13 @@ export default function AppShell() {
               <Bell size={19} />
             </button>
             <div className="topbar-divider" />
-            <div className="profile-button" aria-label="Workspace Admin profile">
-              <span className="profile-avatar">RK</span>
-              <span className="profile-copy"><strong>Workspace Admin</strong><small>Administrator</small></span>
-            </div>
+            <div className="profile-button">
+  <span className="profile-avatar">{user?.full_name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span>
+  <span className="profile-copy"><strong>{user?.full_name}</strong><small>{user?.role}</small></span>
+  <button className="icon-button" type="button" aria-label="Sign out" title="Sign out" onClick={async () => { try { await logout() } finally { navigate("/login", { replace: true }) } }}>
+    <LogOut size={17} />
+  </button>
+</div>
           </div>
         </header>
 

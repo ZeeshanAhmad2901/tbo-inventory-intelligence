@@ -6,9 +6,14 @@ from tbo_inventory.config import settings
 from tbo_inventory.infrastructure.database.base import Base
 from tbo_inventory.infrastructure.database.database import engine
 from tbo_inventory.infrastructure.database.models import (  # noqa: F401
+    CanonicalProduct,
     ImportJob,
+    PasswordResetToken,
     RawRecord,
     Supplier,
+    SupplierProduct,
+    User,
+    UserSession,
 )
 
 config = context.config
