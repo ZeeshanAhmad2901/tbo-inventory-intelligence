@@ -1,5 +1,6 @@
 from tbo_inventory.infrastructure.database.models.canonical_product import CanonicalProduct
 from tbo_inventory.infrastructure.database.models.import_job import ImportJob
+from tbo_inventory.infrastructure.database.models.match_decision import MatchDecision
 from tbo_inventory.infrastructure.database.models.password_reset_token import PasswordResetToken
 from tbo_inventory.infrastructure.database.models.raw_record import RawRecord
 from tbo_inventory.infrastructure.database.models.supplier import Supplier
@@ -10,6 +11,7 @@ from tbo_inventory.infrastructure.database.models.user_session import UserSessio
 __all__ = [
     "Supplier",
     "ImportJob",
+    "MatchDecision",
     "RawRecord",
     "SupplierProduct",
     "CanonicalProduct",

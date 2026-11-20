@@ -20,6 +20,7 @@ from sqlalchemy.types import Uuid
 from tbo_inventory.infrastructure.database.base import Base
 
 if TYPE_CHECKING:
+    from tbo_inventory.infrastructure.database.models.canonical_product import CanonicalProduct
     from tbo_inventory.infrastructure.database.models.raw_record import RawRecord
     from tbo_inventory.infrastructure.database.models.supplier import Supplier
 
@@ -66,6 +67,13 @@ class SupplierProduct(Base):
         Uuid(as_uuid=True),
         ForeignKey("suppliers.id", ondelete="RESTRICT"),
         nullable=False,
+    )
+
+    canonical_product_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("canonical_products.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     source_raw_record_id: Mapped[UUID] = mapped_column(
@@ -120,6 +128,8 @@ class SupplierProduct(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+    canonical_product: Mapped["CanonicalProduct | None"] = relationship()
 
     supplier: Mapped["Supplier"] = relationship(
         back_populates="supplier_products",
