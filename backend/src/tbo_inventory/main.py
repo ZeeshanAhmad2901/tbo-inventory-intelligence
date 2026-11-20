@@ -10,7 +10,9 @@ from tbo_inventory.infrastructure.database.models.user import User
 from tbo_inventory.infrastructure.database.session import get_db
 from tbo_inventory.modules.auth.router import get_current_user
 from tbo_inventory.modules.auth.router import router as auth_router
+from tbo_inventory.modules.catalog.router import router as catalog_router
 from tbo_inventory.modules.ingestion.router import router as ingestion_router
+from tbo_inventory.modules.matching.router import router as matching_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -61,5 +63,7 @@ def list_suppliers(
 
 
 app.include_router(ingestion_router)
+app.include_router(catalog_router)
+app.include_router(matching_router)
 
 app.include_router(auth_router)

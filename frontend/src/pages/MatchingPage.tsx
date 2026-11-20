@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
-import { readBrowserArray, writeBrowserValue } from '../lib/browser-storage'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeftRight,
   Check,
@@ -10,310 +9,163 @@ import {
   Search,
   ShieldCheck,
   ThumbsDown,
-  RotateCcw,
+  RefreshCw,
 } from 'lucide-react'
+import { apiRequest } from '../lib/api-client'
 
-type MatchStatus = 'Needs review' | 'Matched' | 'Unmatched'
-
-type Evidence = {
-  label: string
-  detail: string
-  strength: 'Strong' | 'Moderate' | 'Weak'
+type ProductRecord = {
+  id: string
+  name: string
+  product_type: string
+  supplier_id: string
+  supplier_name: string
+  canonical_product_id: string | null
+  city: string | null
+  country: string | null
+  address: string | null
+  category: string | null
 }
 
 type Candidate = {
   id: string
-  leftSupplier: string
-  leftId: string
-  leftName: string
-  leftAddress: string
-  leftCity: string
-  leftCountry: string
-  leftCategory: string
-  rightSupplier: string
-  rightId: string
-  rightName: string
-  rightAddress: string
-  rightCity: string
-  rightCountry: string
-  rightCategory: string
-  confidence: number
-  status: MatchStatus
-  evidence: Evidence[]
+  left: ProductRecord
+  right: ProductRecord
+  similarity_score: number
+  evidence: string[]
+  status: 'needs_review'
 }
 
-const MATCHING_STORAGE_KEY = 'tbo.matching.candidates.v1'
-
-function isCandidate(value: unknown): value is Candidate {
-  if (!value || typeof value !== 'object') return false
-
-  const item = value as Candidate
-  const statuses: MatchStatus[] = ['Needs review', 'Matched', 'Unmatched']
-
-  return (
-    typeof item.id === 'string' &&
-    typeof item.leftSupplier === 'string' &&
-    typeof item.leftId === 'string' &&
-    typeof item.leftName === 'string' &&
-    typeof item.leftAddress === 'string' &&
-    typeof item.leftCity === 'string' &&
-    typeof item.leftCountry === 'string' &&
-    typeof item.leftCategory === 'string' &&
-    typeof item.rightSupplier === 'string' &&
-    typeof item.rightId === 'string' &&
-    typeof item.rightName === 'string' &&
-    typeof item.rightAddress === 'string' &&
-    typeof item.rightCity === 'string' &&
-    typeof item.rightCountry === 'string' &&
-    typeof item.rightCategory === 'string' &&
-    typeof item.confidence === 'number' &&
-    Number.isFinite(item.confidence) &&
-    statuses.includes(item.status) &&
-    Array.isArray(item.evidence) &&
-    item.evidence.every((entry) =>
-      entry &&
-      typeof entry.label === 'string' &&
-      typeof entry.detail === 'string' &&
-      ['Strong', 'Moderate', 'Weak'].includes(entry.strength)
-    )
-  )
+type CandidateResponse = {
+  items: Candidate[]
+  total: number
+  returned: number
+  products_considered: number
+  rejected_pairs_excluded: number
+  score_description: string
 }
 
-const initialCandidates: Candidate[] = [
-  {
-    id: 'PAIR-2048',
-    leftSupplier: 'Hotelbeds',
-    leftId: 'HB-GOI-20193',
-    leftName: 'Azure Bay Resort & Spa',
-    leftAddress: 'Candolim Beach Road',
-    leftCity: 'Goa',
-    leftCountry: 'India',
-    leftCategory: '5 Star Resort',
-    rightSupplier: 'TBO Holidays',
-    rightId: 'TBO-GOI-8821',
-    rightName: 'Azure Bay Beach Resort',
-    rightAddress: 'Candolim Beach Rd.',
-    rightCity: 'Goa',
-    rightCountry: 'India',
-    rightCategory: 'Beach Resort',
-    confidence: 94,
-    status: 'Needs review',
-    evidence: [
-      { label: 'Hotel name', detail: 'Strong name similarity with shared distinctive terms', strength: 'Strong' },
-      { label: 'Location', detail: 'Same city and country', strength: 'Strong' },
-      { label: 'Address', detail: 'Street name is consistent after abbreviation normalization', strength: 'Strong' },
-      { label: 'Property category', detail: 'Both records describe a resort property', strength: 'Moderate' },
-    ],
-  },
-  {
-    id: 'PAIR-2049',
-    leftSupplier: 'WebBeds',
-    leftId: 'WB-SIN-12093',
-    leftName: 'Parkview Suites',
-    leftAddress: 'Orchard Road',
-    leftCity: 'Singapore',
-    leftCountry: 'Singapore',
-    leftCategory: 'Serviced Apartment',
-    rightSupplier: 'RateHawk',
-    rightId: 'RH-SIN-33012',
-    rightName: 'Park View Hotel & Suites',
-    rightAddress: 'Orchard Road',
-    rightCity: 'Singapore',
-    rightCountry: 'Singapore',
-    rightCategory: '4 Star Hotel',
-    confidence: 88,
-    status: 'Needs review',
-    evidence: [
-      { label: 'Hotel name', detail: 'Similar name tokens and word order', strength: 'Strong' },
-      { label: 'Location', detail: 'Same city and country', strength: 'Strong' },
-      { label: 'Address', detail: 'Street-level address agreement', strength: 'Strong' },
-      { label: 'Property category', detail: 'Serviced apartment and hotel classifications differ', strength: 'Weak' },
-    ],
-  },
-  {
-    id: 'PAIR-2050',
-    leftSupplier: 'Hotelbeds',
-    leftId: 'HB-DXB-10482',
-    leftName: 'The Grand Meridian',
-    leftAddress: 'Sheikh Zayed Road',
-    leftCity: 'Dubai',
-    leftCountry: 'United Arab Emirates',
-    leftCategory: 'Luxury Hotel',
-    rightSupplier: 'WebBeds',
-    rightId: 'WB-778201',
-    rightName: 'Grand Meridian Dubai',
-    rightAddress: 'Sheikh Zayed Road',
-    rightCity: 'Dubai',
-    rightCountry: 'United Arab Emirates',
-    rightCategory: 'Hotel',
-    confidence: 97,
-    status: 'Matched',
-    evidence: [
-      { label: 'Hotel name', detail: 'High name similarity after normalization', strength: 'Strong' },
-      { label: 'Location', detail: 'Same city and country', strength: 'Strong' },
-      { label: 'Address', detail: 'Matching street address', strength: 'Strong' },
-      { label: 'Property category', detail: 'Compatible hotel classifications', strength: 'Moderate' },
-    ],
-  },
-  {
-    id: 'PAIR-2051',
-    leftSupplier: 'RateHawk',
-    leftId: 'RH-SYD-60021',
-    leftName: 'Harbour Lights Hotel',
-    leftAddress: 'Darling Harbour',
-    leftCity: 'Sydney',
-    leftCountry: 'Australia',
-    leftCategory: '4 Star Hotel',
-    rightSupplier: 'WebBeds',
-    rightId: 'WB-SYD-88201',
-    rightName: 'Harbourlight Apartments',
-    rightAddress: 'Darling Harbour',
-    rightCity: 'Sydney',
-    rightCountry: 'Australia',
-    rightCategory: 'Serviced Apartment',
-    confidence: 72,
-    status: 'Needs review',
-    evidence: [
-      { label: 'Hotel name', detail: 'Partial name similarity; property wording differs', strength: 'Moderate' },
-      { label: 'Location', detail: 'Same city and country', strength: 'Strong' },
-      { label: 'Address', detail: 'Neighborhood matches but exact address is unavailable', strength: 'Moderate' },
-      { label: 'Property category', detail: 'Hotel and serviced apartment classifications differ', strength: 'Weak' },
-    ],
-  },
-  {
-    id: 'PAIR-2052',
-    leftSupplier: 'Hotelbeds',
-    leftId: 'HB-LON-44102',
-    leftName: 'Cedar Court Hotel',
-    leftAddress: 'Kensington High Street',
-    leftCity: 'London',
-    leftCountry: 'United Kingdom',
-    leftCategory: '4 Star Hotel',
-    rightSupplier: 'TBO Holidays',
-    rightId: 'TBO-LON-99014',
-    rightName: 'Cedar Court Residence',
-    rightAddress: 'Bayswater Road',
-    rightCity: 'London',
-    rightCountry: 'United Kingdom',
-    rightCategory: 'Residence',
-    confidence: 41,
-    status: 'Unmatched',
-    evidence: [
-      { label: 'Hotel name', detail: 'Some shared name tokens, but different property wording', strength: 'Weak' },
-      { label: 'Location', detail: 'Same city and country only', strength: 'Moderate' },
-      { label: 'Address', detail: 'Different street addresses', strength: 'Weak' },
-      { label: 'Property category', detail: 'Hotel and residence classifications differ', strength: 'Weak' },
-    ],
-  },
-  {
-    id: 'PAIR-2053',
-    leftSupplier: 'WebBeds',
-    leftId: 'WB-BKK-77102',
-    leftName: 'Lotus Grand Palace',
-    leftAddress: 'Sukhumvit Road',
-    leftCity: 'Bangkok',
-    leftCountry: 'Thailand',
-    leftCategory: '5 Star Hotel',
-    rightSupplier: 'TBO Holidays',
-    rightId: 'TBO-BKK-11903',
-    rightName: 'Lotus Grand Palace Bangkok',
-    rightAddress: 'Sukhumvit Road',
-    rightCity: 'Bangkok',
-    rightCountry: 'Thailand',
-    rightCategory: 'Luxury Hotel',
-    confidence: 96,
-    status: 'Matched',
-    evidence: [
-      { label: 'Hotel name', detail: 'Near-exact name match', strength: 'Strong' },
-      { label: 'Location', detail: 'Same city and country', strength: 'Strong' },
-      { label: 'Address', detail: 'Matching street address', strength: 'Strong' },
-      { label: 'Property category', detail: 'Compatible hotel classifications', strength: 'Strong' },
-    ],
-  },
-]
+type Filter = 'All candidates' | 'High similarity' | 'Medium similarity' | 'Low similarity'
 
-const filters: Array<'All candidates' | MatchStatus> = [
+const filters: Filter[] = [
   'All candidates',
-  'Needs review',
-  'Matched',
-  'Unmatched',
+  'High similarity',
+  'Medium similarity',
+  'Low similarity',
 ]
 
-function statusClass(status: MatchStatus) {
-  if (status === 'Matched') return 'status-connected'
-  if (status === 'Needs review') return 'status-processing'
-  return 'status-disconnected'
-}
-
-function confidenceClass(score: number) {
+function similarityClass(score: number) {
   if (score >= 90) return 'matching-confidence-high'
   if (score >= 70) return 'matching-confidence-medium'
   return 'matching-confidence-low'
 }
 
+function evidenceStrength(detail: string): 'Strong' | 'Moderate' | 'Weak' {
+  const match = detail.match(/(\d+)%/)
+  const score = match ? Number(match[1]) : 0
+
+  if (score >= 90) return 'Strong'
+  if (score >= 65) return 'Moderate'
+  return 'Weak'
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+}
+
 function CandidateRecord({
-  supplier,
-  listingId,
-  name,
-  address,
-  city,
-  country,
-  category,
+  product,
 }: {
-  supplier: string
-  listingId: string
-  name: string
-  address: string
-  city: string
-  country: string
-  category: string
+  product: ProductRecord
 }) {
+  const location = [
+    product.address,
+    product.city,
+    product.country,
+  ].filter(Boolean).join(', ')
+
   return (
     <article className="matching-record">
       <div className="matching-record-top">
-        <span className="matching-supplier">{supplier}</span>
-        <span className="matching-listing-id">{listingId}</span>
+        <span className="matching-supplier">{product.supplier_name}</span>
+        <span className="matching-listing-id">{product.id}</span>
       </div>
-      <h3>{name}</h3>
+      <h3>{product.name}</h3>
       <div className="matching-record-detail">
         <MapPin size={13} />
-        <span>{address}, {city}, {country}</span>
+        <span>{location || 'Location not provided'}</span>
       </div>
-      <div className="matching-category">{category}</div>
+      <div className="matching-category">
+        {product.category || product.product_type || 'Category not provided'}
+      </div>
     </article>
   )
 }
 
 export default function MatchingPage() {
-  const [candidates, setCandidates] = useState(() =>
-    readBrowserArray(MATCHING_STORAGE_KEY, initialCandidates, isCandidate),
-  )
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [metadata, setMetadata] = useState<CandidateResponse | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [activeFilter, setActiveFilter] = useState<Filter>('All candidates')
+  const [search, setSearch] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [decisionMessage, setDecisionMessage] = useState('')
+
+  const loadCandidates = useCallback(async () => {
+    setError('')
+
+    try {
+      const response = await apiRequest<CandidateResponse>(
+        '/matching/candidates',
+      )
+
+      setCandidates(response.items)
+      setMetadata(response)
+
+      setSelectedId((current) => {
+        if (current && response.items.some((item) => item.id === current)) {
+          return current
+        }
+
+        return response.items[0]?.id ?? null
+      })
+    } catch (requestError) {
+      setError(errorMessage(requestError))
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
+    }
+  }, [])
 
   useEffect(() => {
-    writeBrowserValue(MATCHING_STORAGE_KEY, candidates)
-  }, [candidates])
-  const [selectedId, setSelectedId] = useState(initialCandidates[0].id)
-  const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>('All candidates')
-  const [search, setSearch] = useState('')
-  const [decisionMessage, setDecisionMessage] = useState('')
+    void loadCandidates()
+  }, [loadCandidates])
 
   const filteredCandidates = useMemo(() => {
     const query = search.trim().toLowerCase()
 
     return candidates.filter((candidate) => {
+      const score = candidate.similarity_score
+
       const matchesFilter =
-        activeFilter === 'All candidates' || candidate.status === activeFilter
+        activeFilter === 'All candidates' ||
+        (activeFilter === 'High similarity' && score >= 90) ||
+        (activeFilter === 'Medium similarity' && score >= 70 && score < 90) ||
+        (activeFilter === 'Low similarity' && score < 70)
+
       const searchable = [
         candidate.id,
-        candidate.leftName,
-        candidate.rightName,
-        candidate.leftSupplier,
-        candidate.rightSupplier,
-        candidate.leftCity,
-        candidate.rightCity,
-        candidate.leftId,
-        candidate.rightId,
-      ].join(' ').toLowerCase()
+        candidate.left.name,
+        candidate.right.name,
+        candidate.left.supplier_name,
+        candidate.right.supplier_name,
+        candidate.left.city,
+        candidate.right.city,
+        candidate.left.id,
+        candidate.right.id,
+      ].filter(Boolean).join(' ').toLowerCase()
 
       return matchesFilter && searchable.includes(query)
     })
@@ -324,28 +176,44 @@ export default function MatchingPage() {
 
   const counts = {
     total: candidates.length,
-    review: candidates.filter((candidate) => candidate.status === 'Needs review').length,
-    matched: candidates.filter((candidate) => candidate.status === 'Matched').length,
-    unmatched: candidates.filter((candidate) => candidate.status === 'Unmatched').length,
+    high: candidates.filter((item) => item.similarity_score >= 90).length,
+    medium: candidates.filter(
+      (item) => item.similarity_score >= 70 && item.similarity_score < 90,
+    ).length,
+    low: candidates.filter((item) => item.similarity_score < 70).length,
   }
 
-  const updateStatus = (status: MatchStatus) => {
-    if (!selectedCandidate) return
-
-    setCandidates((current) =>
-      current.map((candidate) =>
-        candidate.id === selectedCandidate.id ? { ...candidate, status } : candidate,
-      ),
-    )
-    setDecisionMessage(`${selectedCandidate.id} marked as ${status.toLowerCase()}.`)
+  const refreshCandidates = async () => {
+    setIsRefreshing(true)
+    await loadCandidates()
   }
 
-  const resetDemo = () => {
-    setCandidates(initialCandidates)
-    setSelectedId(initialCandidates[0].id)
-    setActiveFilter('All candidates')
-    setSearch('')
-    setDecisionMessage('Demo decisions have been reset.')
+  const submitDecision = async (decision: 'approved' | 'rejected') => {
+    if (!selectedCandidate || isSubmitting) return
+
+    setIsSubmitting(true)
+    setDecisionMessage('')
+    setError('')
+
+    try {
+      const response = await apiRequest<{
+        status: string
+        message: string
+      }>(
+        `/matching/candidates/${selectedCandidate.left.id}/${selectedCandidate.right.id}/decision`,
+        {
+          method: 'POST',
+          body: { decision },
+        },
+      )
+
+      setDecisionMessage(response.message)
+      await loadCandidates()
+    } catch (requestError) {
+      setError(errorMessage(requestError))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -359,9 +227,14 @@ export default function MatchingPage() {
           </p>
         </div>
         <div className="heading-actions">
-          <span className="demo-label"><span /> ILLUSTRATIVE DATA</span>
-          <button className="button button-secondary" onClick={resetDemo}>
-            <RotateCcw size={14} /> Reset demo
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={refreshCandidates}
+            disabled={isRefreshing || isLoading}
+          >
+            <RefreshCw size={14} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh candidates'}
           </button>
         </div>
       </div>
@@ -369,37 +242,54 @@ export default function MatchingPage() {
       <section className="metrics-grid matching-metrics" aria-label="Matching summary">
         <article className="metric-card">
           <div className="metric-top">
-            <span className="metric-label">Candidate pairs</span>
+            <span className="metric-label">Open candidates</span>
             <span className="metric-icon"><ArrowLeftRight size={17} /></span>
           </div>
-          <div className="metric-value">{counts.total}</div>
-          <div className="metric-foot"><span className="metric-note">Illustrative review sample</span></div>
-        </article>
-        <article className="metric-card">
-          <div className="metric-top">
-            <span className="metric-label">Needs review</span>
-            <span className="metric-icon"><CircleHelp size={17} /></span>
+          <div className="metric-value">{metadata?.total ?? 0}</div>
+          <div className="metric-foot">
+            <span className="metric-note">Returned by matching API</span>
           </div>
-          <div className="metric-value">{counts.review}</div>
-          <div className="metric-foot"><span className="metric-note">Awaiting a decision</span></div>
         </article>
+
         <article className="metric-card">
           <div className="metric-top">
-            <span className="metric-label">Matched</span>
+            <span className="metric-label">High similarity</span>
             <span className="metric-icon"><CheckCircle2 size={17} /></span>
           </div>
-          <div className="metric-value">{counts.matched}</div>
-          <div className="metric-foot"><span className="metric-note">Approved in this demo</span></div>
+          <div className="metric-value">{counts.high}</div>
+          <div className="metric-foot">
+            <span className="metric-note">90% or higher heuristic score</span>
+          </div>
         </article>
+
         <article className="metric-card">
           <div className="metric-top">
-            <span className="metric-label">Unmatched</span>
-            <span className="metric-icon"><ThumbsDown size={17} /></span>
+            <span className="metric-label">Medium similarity</span>
+            <span className="metric-icon"><CircleHelp size={17} /></span>
           </div>
-          <div className="metric-value">{counts.unmatched}</div>
-          <div className="metric-foot"><span className="metric-note">Not considered the same property</span></div>
+          <div className="metric-value">{counts.medium}</div>
+          <div className="metric-foot">
+            <span className="metric-note">70–89% heuristic score</span>
+          </div>
+        </article>
+
+        <article className="metric-card">
+          <div className="metric-top">
+            <span className="metric-label">Products considered</span>
+            <span className="metric-icon"><ShieldCheck size={17} /></span>
+          </div>
+          <div className="metric-value">{metadata?.products_considered ?? 0}</div>
+          <div className="metric-foot">
+            <span className="metric-note">Active supplier listings scanned</span>
+          </div>
         </article>
       </section>
+
+      {error && (
+        <div className="matching-decision-feedback" role="alert">
+          {error}
+        </div>
+      )}
 
       <section className="matching-workspace" aria-label="Hotel matching review workspace">
         <aside className="panel matching-queue">
@@ -435,50 +325,57 @@ export default function MatchingPage() {
                 <span>
                   {filter === 'All candidates'
                     ? counts.total
-                    : filter === 'Needs review'
-                      ? counts.review
-                      : filter === 'Matched'
-                        ? counts.matched
-                        : counts.unmatched}
+                    : filter === 'High similarity'
+                      ? counts.high
+                      : filter === 'Medium similarity'
+                        ? counts.medium
+                        : counts.low}
                 </span>
               </button>
             ))}
           </div>
 
           <div className="matching-candidate-list">
-            {filteredCandidates.map((candidate) => (
+            {isLoading ? (
+              <div className="matching-empty">Loading supplier candidates...</div>
+            ) : filteredCandidates.map((candidate) => (
               <button
                 key={candidate.id}
                 type="button"
-                className={`matching-candidate ${selectedId === candidate.id ? 'matching-candidate-active' : ''}`}
+                className={`matching-candidate ${selectedCandidate?.id === candidate.id ? 'matching-candidate-active' : ''}`}
                 onClick={() => {
                   setSelectedId(candidate.id)
                   setDecisionMessage('')
                 }}
-                aria-pressed={selectedId === candidate.id}
+                aria-pressed={selectedCandidate?.id === candidate.id}
               >
                 <span className="matching-candidate-top">
-                  <span className="matching-candidate-id">{candidate.id}</span>
-                  <span className={`matching-score ${confidenceClass(candidate.confidence)}`}>
-                    {candidate.confidence}%
+                  <span className="matching-candidate-id">
+                    {candidate.left.id.slice(0, 8)} / {candidate.right.id.slice(0, 8)}
+                  </span>
+                  <span className={`matching-score ${similarityClass(candidate.similarity_score)}`}>
+                    {candidate.similarity_score}%
                   </span>
                 </span>
-                <strong>{candidate.leftName}</strong>
+                <strong>{candidate.left.name}</strong>
                 <span className="matching-candidate-versus">
                   <ArrowLeftRight size={12} />
-                  {candidate.rightName}
+                  {candidate.right.name}
                 </span>
                 <span className="matching-candidate-bottom">
-                  <span className={`status-pill ${statusClass(candidate.status)}`}>
-                    <i /> {candidate.status}
+                  <span className="status-pill status-processing">
+                    <i /> Needs review
                   </span>
                   <ChevronRight size={14} />
                 </span>
               </button>
             ))}
-            {filteredCandidates.length === 0 && (
+
+            {!isLoading && filteredCandidates.length === 0 && (
               <div className="matching-empty">
-                No candidate pairs match your search. Try another term or filter.
+                {candidates.length === 0
+                  ? 'No matching candidates are currently available. Import supplier listings or refresh the queue.'
+                  : 'No candidate pairs match your search or selected filter.'}
               </div>
             )}
           </div>
@@ -491,65 +388,52 @@ export default function MatchingPage() {
                 <div className="matching-detail-heading">
                   <div>
                     <div className="eyebrow">CANDIDATE COMPARISON</div>
-                    <h2>{selectedCandidate.id}</h2>
+                    <h2>Supplier listing comparison</h2>
                     <p>Review the supplier records and available evidence before deciding.</p>
                   </div>
-                  <span className={`status-pill ${statusClass(selectedCandidate.status)}`}>
-                    <i /> {selectedCandidate.status}
+                  <span className="status-pill status-processing">
+                    <i /> Needs review
                   </span>
                 </div>
 
                 <div className="matching-comparison">
-                  <CandidateRecord
-                    supplier={selectedCandidate.leftSupplier}
-                    listingId={selectedCandidate.leftId}
-                    name={selectedCandidate.leftName}
-                    address={selectedCandidate.leftAddress}
-                    city={selectedCandidate.leftCity}
-                    country={selectedCandidate.leftCountry}
-                    category={selectedCandidate.leftCategory}
-                  />
+                  <CandidateRecord product={selectedCandidate.left} />
                   <div className="matching-connector" aria-label="Compared with">
                     <ArrowLeftRight size={18} />
                   </div>
-                  <CandidateRecord
-                    supplier={selectedCandidate.rightSupplier}
-                    listingId={selectedCandidate.rightId}
-                    name={selectedCandidate.rightName}
-                    address={selectedCandidate.rightAddress}
-                    city={selectedCandidate.rightCity}
-                    country={selectedCandidate.rightCountry}
-                    category={selectedCandidate.rightCategory}
-                  />
+                  <CandidateRecord product={selectedCandidate.right} />
                 </div>
 
                 <div className="matching-confidence-panel">
                   <div className="matching-confidence-top">
                     <div>
-                      <span className="matching-section-label">ILLUSTRATIVE MATCH CONFIDENCE</span>
-                      <p>Indicative similarity score for this example pair</p>
+                      <span className="matching-section-label">HEURISTIC SIMILARITY SCORE</span>
+                      <p>Calculated from the available supplier listing fields</p>
                     </div>
-                    <strong className={confidenceClass(selectedCandidate.confidence)}>
-                      {selectedCandidate.confidence}%
+                    <strong className={similarityClass(selectedCandidate.similarity_score)}>
+                      {selectedCandidate.similarity_score}%
                     </strong>
                   </div>
                   <div
                     className="matching-confidence-track"
                     role="progressbar"
-                    aria-label="Illustrative match confidence"
+                    aria-label="Heuristic similarity score"
                     aria-valuemin={0}
                     aria-valuemax={100}
-                    aria-valuenow={selectedCandidate.confidence}
+                    aria-valuenow={selectedCandidate.similarity_score}
                   >
                     <span
-                      className={confidenceClass(selectedCandidate.confidence)}
-                      style={{ width: `${selectedCandidate.confidence}%` }}
+                      className={similarityClass(selectedCandidate.similarity_score)}
+                      style={{ width: `${selectedCandidate.similarity_score}%` }}
                     />
                   </div>
                   <div className="matching-confidence-scale">
                     <span>Low similarity</span>
                     <span>High similarity</span>
                   </div>
+                  <p className="matching-decision-note">
+                    This score is a heuristic similarity measure, not a probability or confirmation that the listings represent the same property.
+                  </p>
                 </div>
               </section>
 
@@ -557,30 +441,35 @@ export default function MatchingPage() {
                 <div className="panel-heading">
                   <div>
                     <h2>Matching evidence</h2>
-                    <p>Signals shown here are illustrative, not generated by a live engine.</p>
+                    <p>Signals calculated from fields available in the supplier records.</p>
                   </div>
                   <ShieldCheck size={18} className="subtle-icon" />
                 </div>
 
                 <div className="matching-evidence-list">
-                  {selectedCandidate.evidence.map((item) => (
-                    <div className="matching-evidence-row" key={item.label}>
-                      <div className="matching-evidence-icon">
-                        {item.strength === 'Strong' ? (
-                          <Check size={14} />
-                        ) : (
-                          <CircleHelp size={14} />
-                        )}
+                  {selectedCandidate.evidence.map((detail, index) => {
+                    const label = detail.split(':')[0] || `Signal ${index + 1}`
+                    const strength = evidenceStrength(detail)
+
+                    return (
+                      <div className="matching-evidence-row" key={`${label}-${index}`}>
+                        <div className="matching-evidence-icon">
+                          {strength === 'Strong' ? (
+                            <Check size={14} />
+                          ) : (
+                            <CircleHelp size={14} />
+                          )}
+                        </div>
+                        <div className="matching-evidence-copy">
+                          <strong>{label}</strong>
+                          <span>{detail}</span>
+                        </div>
+                        <span className={`matching-evidence-strength matching-strength-${strength.toLowerCase()}`}>
+                          {strength}
+                        </span>
                       </div>
-                      <div className="matching-evidence-copy">
-                        <strong>{item.label}</strong>
-                        <span>{item.detail}</span>
-                      </div>
-                      <span className={`matching-evidence-strength matching-strength-${item.strength.toLowerCase()}`}>
-                        {item.strength}
-                      </span>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
 
                 <div className="matching-decision-note">
@@ -592,29 +481,25 @@ export default function MatchingPage() {
               <section className="panel matching-actions-panel">
                 <div>
                   <h2>Review decision</h2>
-                  <p>Choose how this candidate pair should be classified.</p>
+                  <p>Approve the canonical link or reject this candidate pair.</p>
                 </div>
                 <div className="matching-action-buttons">
                   <button
                     type="button"
                     className="button button-primary"
-                    onClick={() => updateStatus('Matched')}
+                    onClick={() => void submitDecision('approved')}
+                    disabled={isSubmitting}
                   >
-                    <CheckCircle2 size={14} /> Approve match
+                    <CheckCircle2 size={14} />
+                    {isSubmitting ? 'Saving...' : 'Approve match'}
                   </button>
                   <button
                     type="button"
                     className="button button-secondary"
-                    onClick={() => updateStatus('Unmatched')}
+                    onClick={() => void submitDecision('rejected')}
+                    disabled={isSubmitting}
                   >
                     <ThumbsDown size={14} /> Reject candidate
-                  </button>
-                  <button
-                    type="button"
-                    className="button button-secondary"
-                    onClick={() => updateStatus('Needs review')}
-                  >
-                    <CircleHelp size={14} /> Send to review
                   </button>
                 </div>
                 {decisionMessage && (
@@ -627,16 +512,20 @@ export default function MatchingPage() {
           ) : (
             <section className="panel matching-no-selection">
               <CircleHelp size={25} />
-              <h2>No candidate selected</h2>
-              <p>Choose a candidate pair from the queue to inspect the supplier records.</p>
+              <h2>{isLoading ? 'Loading candidates' : 'No candidate selected'}</h2>
+              <p>
+                {isLoading
+                  ? 'Retrieving supplier listings from the backend.'
+                  : 'Import supplier listings or adjust your search to find candidate pairs.'}
+              </p>
             </section>
           )}
         </div>
       </section>
 
       <p className="demo-disclaimer">
-        Demonstration only: candidate records, confidence scores, and evidence are illustrative examples.
-        Decisions are saved in this browser on this device. They are not sent to a backend or connected to live supplier data.
+        Candidate pairs are generated from active supplier listings. Similarity scores are heuristic signals
+        for human review. Approved canonical links and rejected pairs are persisted by the backend.
       </p>
     </div>
   )
